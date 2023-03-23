@@ -27,26 +27,18 @@ impl<'a> Lexer<'a> {
 
     pub fn next_token(&mut self) -> Token {
         self.skip_nontokens();
+        self.reset_begin();
 
-        if self.curr_char.is_some() || !self.spelling.is_empty() {
-            let token = Token::new(
-                TokenKind::Unknown,
-                mem::take(&mut self.spelling),
-                self.begin_pos,
-                self.last_pos
-            );
-            self.spelling.clear();
-            self.accept_char();
-            self.reset_begin();
-            return token;
-        } else {
-            return Token::new(
-                TokenKind::EOF,
-                String::new(),
-                self.begin_pos,
-                self.last_pos
-            );
-        }
+        let kind = self.get_token_kind();
+        let token = Token::new(
+            kind,
+            mem::take(&mut self.spelling),
+            self.begin_pos,
+            self.last_pos
+        );
+
+        self.accept_char();
+        return token;
     }
 
     fn accept_char(&mut self) {
@@ -54,6 +46,10 @@ impl<'a> Lexer<'a> {
             self.spelling.push(c);
         }
 
+        self.skip_char();
+    }
+
+    fn skip_char(&mut self) {
         if self.curr_char == Some(EOL) {
             self.last_pos.0 += 1;
             self.last_pos.1 = 0;
@@ -61,10 +57,6 @@ impl<'a> Lexer<'a> {
             self.last_pos.1 += 1;
         }
 
-        self.skip_char();
-    }
-
-    fn skip_char(&mut self) {
         self.curr_char = self.reader.read_char();
     }
 
@@ -111,6 +103,21 @@ impl<'a> Lexer<'a> {
                 },
                 _ => break,
             }
+        }
+    }
+
+    fn get_token_kind(&mut self) -> TokenKind {
+        let curr_char: Option<char> = self.curr_char.or_else(|| {
+            if self.spelling.is_empty() {
+                None
+            } else {
+                self.spelling.chars().next()
+            }
+        });
+
+        match curr_char {
+            Some(_) => TokenKind::Unknown,
+            None => TokenKind::EOF,
         }
     }
 }

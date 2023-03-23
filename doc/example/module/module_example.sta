@@ -1,0 +1,13 @@
+// import std *;
+// import lib_a { ClassA, func_a };
+// import ./greet { self, greet };
+// import "/absolute/path/to/module" { func_b };
+
+import {
+    std *,
+    lib_a { ClassA, func_a },
+    ./greet { greet },
+    "/absolute path/to/module" { func_b }
+};
+
+greet();

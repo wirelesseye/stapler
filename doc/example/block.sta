@@ -1,0 +1,9 @@
+let x = {
+    let mut y = 0
+    for i in 0..3 {
+        y++
+    }
+    return y
+}
+assert!(x == 3)
+// println(y) << ERROR: cannot access y here

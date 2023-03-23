@@ -1,0 +1,9 @@
+import std *
+
+pro let greet = () -> {
+    println("Hello world!")
+}
+
+let private_fun = () -> {
+    println("Private function!")
+}

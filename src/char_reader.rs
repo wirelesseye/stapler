@@ -25,14 +25,14 @@ impl<R: Read> CharReader<R> {
         match self.buff.chars().nth(self.pos) {
             Some('\n' | '\r') | None => {
                 if self.next_line() {
-                    return Some(EOL);
+                    Some(EOL)
                 } else {
-                    return None;
+                    None
                 }
             },
             Some(c) => {
                 self.pos += 1;
-                return Some(c);
+                Some(c)
             }
         }
     }

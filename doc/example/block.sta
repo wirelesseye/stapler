@@ -5,5 +5,5 @@ let x = {
     }
     return y
 }
-assert!(x == 3)
+assert(x == 3)
 // println(y) << ERROR: cannot access y here

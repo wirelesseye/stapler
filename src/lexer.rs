@@ -1,11 +1,28 @@
 use std::{fs::File, mem};
+use phf::phf_set;
 
 use crate::{char_reader::{CharReader, EOL}, token::{Token, TokenKind, CursorPos}};
 
+const PUNCTUATIONS: phf::Set<char> = phf_set! {
+    '=', ',', '.', '!', '(', ')', '{', '}', ':', ';', '+', '-', '<', '>', '*', '@', '"', '\''
+};
+
+fn is_punctuation(c: char) -> bool {
+    PUNCTUATIONS.contains(&c)
+}
+
+fn is_letter(c: char) -> bool {
+    !c.is_whitespace() && !is_punctuation(c)
+}
+
 pub struct Lexer<'a> {
     reader: CharReader<&'a File>,
+
+    last_token_kind: Option<TokenKind>,
+
     curr_char: Option<char>,
     spelling: String,
+
     begin_pos: CursorPos,
     last_pos: CursorPos,
 }
@@ -16,6 +33,7 @@ impl<'a> Lexer<'a> {
         let curr_char = reader.read_char();
         return Self {
             reader,
+            last_token_kind: None,
             curr_char,
             spelling: String::new(),
             begin_pos: (1, 1),
@@ -36,6 +54,7 @@ impl<'a> Lexer<'a> {
             self.last_pos,
         );
 
+        self.last_token_kind = Some(kind);
         return token;
     }
 
@@ -106,15 +125,284 @@ impl<'a> Lexer<'a> {
 
     fn token_kind(&mut self) -> TokenKind {
         match self.curr_char {
-            Some(_) => {
+            None => TokenKind::EOF,
+            Some(':') => {
+                self.accept_char();
+                TokenKind::Colon
+            },
+            Some(';') => {
+                self.accept_char();
+                TokenKind::Semicolon
+            },
+            Some(',') => {
+                self.accept_char();
+                TokenKind::Comma
+            }
+            Some('.') => {
+                self.accept_char();
+
+                if self.curr_char == Some('.') {
+                    self.accept_char();
+                    return TokenKind::To;
+                }
+
+                if matches!(
+                    self.last_token_kind,
+                    Some(TokenKind::Identifier | TokenKind::RightParen | TokenKind::StringLiteral)
+                ) {
+                    TokenKind::Dot
+                } else {
+                    self.extract_fraction()
+                }
+            },
+            Some('=') => {
+                self.accept_char();
+                if self.curr_char == Some('=') {
+                    self.accept_char();
+                    TokenKind::Equal
+                } else {
+                    TokenKind::Assign
+                }
+            },
+            Some('{') => {
+                self.accept_char();
+                TokenKind::LeftBrace
+            },
+            Some('}') => {
+                self.accept_char();
+                TokenKind::RightBrace
+            },
+            Some('(') => {
+                self.accept_char();
+                TokenKind::LeftParen
+            },
+            Some(')') => {
+                self.accept_char();
+                TokenKind::RightParen
+            },
+            Some('[') => {
+                self.accept_char();
+                TokenKind::LeftBracket
+            },
+            Some(']') => {
+                self.accept_char();
+                TokenKind::RightBracket
+            },
+            Some('<') => {
+                self.accept_char();
+                TokenKind::LeftChevron
+            },
+            Some('>') => {
+                self.accept_char();
+                TokenKind::RightChevron
+            },
+            Some('+') => {
+                self.accept_char();
+                if self.curr_char == Some('+') {
+                    self.accept_char();
+                    TokenKind::Increment
+                } else {
+                    TokenKind::Plus
+                }
+            },
+            Some('-') => {
+                self.accept_char();
+                if self.curr_char == Some('>') {
+                    self.accept_char();
+                    TokenKind::Arrow
+                } else if self.curr_char == Some('-') {
+                    TokenKind::Decrement
+                } else {
+                    TokenKind::Minus
+                }
+            },
+            Some('*') => {
+                self.accept_char();
+                TokenKind::Multiply
+            },
+            Some('/') => {
+                self.accept_char();
+                TokenKind::Divide
+            },
+            Some('!') => {
+                self.accept_char();
+                if self.curr_char == Some('=') {
+                    self.accept_char();
+                    TokenKind::NotEqual
+                } else {
+                    TokenKind::Not
+                }
+            },
+            Some('"') => {
+                self.accept_char();
+                loop {
+                    if self.curr_char == Some('\\') {
+                        self.skip_char();
+                        if self.extract_escape() {
+                            continue;
+                        }
+                    }
+
+                    if self.curr_char.is_none() || self.curr_char == Some('\n') {
+                        panic!("unterminated string");
+                    }
+
+                    if self.curr_char == Some('"') {
+                        break;
+                    }
+
+                    self.accept_char();
+                };
+                self.accept_char();
+                TokenKind::StringLiteral
+            },
+            Some('\'') => {
+                self.accept_char();
+                loop {
+                    if self.curr_char == Some('\\') {
+                        self.skip_char();
+                        if self.extract_escape() {
+                            continue;
+                        }
+                    }
+
+                    if self.curr_char.is_none() || self.curr_char == Some('\n') {
+                        panic!("unterminated string");
+                    }
+
+                    if self.curr_char == Some('\'') {
+                        break;
+                    }
+
+                    self.accept_char();
+                };
+                self.accept_char();
+                TokenKind::CharLiteral
+            },
+            Some(c) if c.is_numeric() => {
+                loop {
+                    self.accept_char();
+                    match self.curr_char {
+                        Some(c) if c.is_numeric() => (),
+                        _ => break,
+                    }
+                }
+
+                match self.curr_char {
+                    Some('.') => {
+                        if self.inspect_char(0) != Some('.') {
+                            self.extract_fraction()
+                        } else {
+                            TokenKind::IntLiteral
+                        }
+                    },
+                    Some('e' | 'E') => self.extract_fraction(),
+                    _ => TokenKind::IntLiteral
+                }
+            },
+            Some(c) if is_letter(c) => {
+                loop {
+                    match self.curr_char {
+                        Some(c) if is_letter(c) =>
+                            self.accept_char(),
+                        _ => break,
+                    }
+                }
+
+                if self.spelling == "true" || self.spelling == "false" {
+                    TokenKind::BoolLiteral
+                } else if let Some(keyword) = self.extract_keyword() {
+                    keyword
+                } else if self.spelling == "true" || self.spelling == "false" {
+                    TokenKind::BoolLiteral
+                } else {
+                    TokenKind::Identifier
+                }
+            },
+            _ => {
                 self.accept_char();
                 TokenKind::Unknown
             },
-            None => TokenKind::EOF,
         }
     }
 
-    fn long_token_kind(&mut self) -> TokenKind {
-        return TokenKind::Unknown;
+    fn extract_keyword(&self) -> Option<TokenKind> {
+        match self.spelling.as_str() {
+            "extern" => Some(TokenKind::Extern),
+            "import" => Some(TokenKind::Import),
+            "let" => Some(TokenKind::Let),
+            "mut" => Some(TokenKind::Mut),
+            _ => None
+        }
+    }
+
+    fn extract_fraction(&mut self) -> TokenKind {
+        if self.curr_char == Some('.') {
+            loop {
+                self.accept_char();
+                match self.curr_char {
+                    Some(c) if c.is_numeric() => (),
+                    _ => break,
+                }
+            }
+        }
+
+        if matches!(self.curr_char, Some('e' | 'E')) {
+            let c = self.inspect_char(0);
+            let nc = self.inspect_char(1);
+
+            if c.is_some() && c.unwrap().is_numeric()
+                || (matches!(c, Some('+' | '-')) && nc.is_some() && nc.unwrap().is_numeric()) {
+                self.accept_char();
+                loop {
+                    self.accept_char();
+                    if self.curr_char.is_none() || !self.curr_char.unwrap().is_numeric() {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if self.spelling.len() <= 1 {
+            TokenKind::Unknown
+        } else {
+            TokenKind::FloatLiteral
+        }
+    }
+
+    fn extract_escape(&mut self) -> bool{
+        match self.curr_char {
+            Some('n') => {
+                self.skip_char();
+                self.spelling.push('\n');
+                true
+            },
+            Some('r') => {
+                self.skip_char();
+                self.spelling.push('\r');
+                true
+            },
+            Some('t') => {
+                self.skip_char();
+                self.spelling.push('\t');
+                true
+            },
+            Some('\\') => {
+                self.skip_char();
+                self.spelling.push('\\');
+                true
+            },
+            Some('\'') => {
+                self.skip_char();
+                self.spelling.push('\'');
+                true
+            },
+            Some('"') => {
+                self.skip_char();
+                self.spelling.push('\"');
+                true
+            },
+            _ => false
+        }
     }
 }

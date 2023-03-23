@@ -23,24 +23,33 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TokenKind {
     // Keywords
     Extern,
     Import,
     Let,
+    Mut,
 
     // Separators
     Assign,
     Arrow,
     Comma,
     Dot,
+    Colon,
+    Semicolon,
+    To,
 
     // Operators
     Plus,
     Minus,
     Multiply,
+    Not,
     Divide,
+    Equal,
+    NotEqual,
+    Increment,
+    Decrement,
 
     // Brackets
     LeftBrace,
@@ -54,11 +63,13 @@ pub enum TokenKind {
 
     // Literals
     BoolLiteral,
+    CharLiteral,
     IntLiteral,
     FloatLiteral,
     StringLiteral,
 
     // Other
+    Identifier,
     Unknown,
     EOF,
 }

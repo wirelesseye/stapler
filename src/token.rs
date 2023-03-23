@@ -26,6 +26,7 @@ impl Token {
 #[derive(Debug, Clone, Copy)]
 pub enum TokenKind {
     // Keywords
+    Extern,
     Import,
     Let,
 

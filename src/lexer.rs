@@ -14,30 +14,28 @@ impl<'a> Lexer<'a> {
     pub fn new(input: &'a File) -> Self {
         let mut reader = CharReader::new(input);
         let curr_char = reader.read_char();
-        let mut lexer = Lexer {
+        return Self {
             reader,
             curr_char,
             spelling: String::new(),
             begin_pos: (1, 1),
             last_pos: (1, 0),
         };
-        lexer.next_token();
-        return lexer;
     }
 
     pub fn next_token(&mut self) -> Token {
         self.skip_nontokens();
         self.reset_begin();
+        self.spelling.clear();
 
-        let kind = self.get_token_kind();
+        let kind = self.token_kind();
         let token = Token::new(
             kind,
             mem::take(&mut self.spelling),
             self.begin_pos,
-            self.last_pos
+            self.last_pos,
         );
 
-        self.accept_char();
         return token;
     }
 
@@ -65,7 +63,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn reset_begin(&mut self) {
-        self.begin_pos = self.last_pos;
+        self.begin_pos = (self.last_pos.0, self.last_pos.1 + 1);
     }
 
     fn skip_nontokens(&mut self) {
@@ -100,24 +98,23 @@ impl<'a> Lexer<'a> {
                         },
                         _ => (),
                     }
-                },
+                }
                 _ => break,
             }
         }
     }
 
-    fn get_token_kind(&mut self) -> TokenKind {
-        let curr_char: Option<char> = self.curr_char.or_else(|| {
-            if self.spelling.is_empty() {
-                None
-            } else {
-                self.spelling.chars().next()
-            }
-        });
-
-        match curr_char {
-            Some(_) => TokenKind::Unknown,
+    fn token_kind(&mut self) -> TokenKind {
+        match self.curr_char {
+            Some(_) => {
+                self.accept_char();
+                TokenKind::Unknown
+            },
             None => TokenKind::EOF,
         }
+    }
+
+    fn long_token_kind(&mut self) -> TokenKind {
+        return TokenKind::Unknown;
     }
 }

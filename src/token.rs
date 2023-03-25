@@ -21,6 +21,14 @@ impl Token {
     pub fn kind(&self) -> TokenKind {
         self.kind
     }
+    
+    pub fn spelling(&self) -> &str {
+        &self.spelling
+    }
+
+    pub fn begin(&self) -> CursorPos {
+        self.begin
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -30,6 +38,11 @@ pub enum TokenKind {
     Import,
     Let,
     Mut,
+
+    // Primitive types
+    I8,
+    I32,
+    I64,
 
     // Separators
     Assign,
@@ -66,7 +79,7 @@ pub enum TokenKind {
     CharLiteral,
     IntLiteral,
     FloatLiteral,
-    StringLiteral,
+    StrLiteral,
 
     // Other
     Identifier,

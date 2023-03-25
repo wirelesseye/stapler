@@ -1,7 +1,8 @@
 use std::{fs::File, mem};
 use phf::phf_set;
 
-use crate::{char_reader::{CharReader, EOL}, token::{Token, TokenKind, CursorPos}};
+use crate::char_reader::{CharReader, EOL};
+use crate::token::{Token, TokenKind, CursorPos};
 
 const PUNCTUATIONS: phf::Set<char> = phf_set! {
     '=', ',', '.', '!', '(', ')', '{', '}', ':', ';', '+', '-', '<', '>', '*', '@', '"', '\''
@@ -148,7 +149,7 @@ impl<'a> Lexer<'a> {
 
                 if matches!(
                     self.last_token_kind,
-                    Some(TokenKind::Identifier | TokenKind::RightParen | TokenKind::StringLiteral)
+                    Some(TokenKind::Identifier | TokenKind::RightParen | TokenKind::StrLiteral)
                 ) {
                     TokenKind::Dot
                 } else {
@@ -254,7 +255,7 @@ impl<'a> Lexer<'a> {
                     self.accept_char();
                 };
                 self.accept_char();
-                TokenKind::StringLiteral
+                TokenKind::StrLiteral
             },
             Some('\'') => {
                 self.accept_char();
@@ -303,8 +304,7 @@ impl<'a> Lexer<'a> {
             Some(c) if is_letter(c) => {
                 loop {
                     match self.curr_char {
-                        Some(c) if is_letter(c) =>
-                            self.accept_char(),
+                        Some(c) if is_letter(c) => self.accept_char(),
                         _ => break,
                     }
                 }
@@ -332,6 +332,10 @@ impl<'a> Lexer<'a> {
             "import" => Some(TokenKind::Import),
             "let" => Some(TokenKind::Let),
             "mut" => Some(TokenKind::Mut),
+
+            "i8" => Some(TokenKind::I8),
+            "i32" => Some(TokenKind::I32),
+            "i64" => Some(TokenKind::I64),
             _ => None
         }
     }

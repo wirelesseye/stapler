@@ -1,35 +1,57 @@
 # The staple language specification
 
 ## Program
-`program -> stmt*`
+```
+program -> stmt*
+```
 
 ## Statement
-`stmt -> decl | def | (expr ";") | import-stmt | extern-stmt`
-
-`import-stmt -> "import" ... ";"`
-
-`extern-stmt -> extern decl | block`
+```
+stmt -> decl
+      | def
+      | expr
+      | import-stmt
+      | extern-stmt
+import-stmt -> "import" ...
+extern-stmt -> "extern" decl | extern-block
+extern-block -> "{" decl* "}"
+```
 
 ## Declearation & Definition
-`decl -> "let" id (":" type)? def-body? ";"`
-
-`def -> def-lhs ("=" def-rhs)+ ";"`
-
-`def-lhs -> id ("." id)*`
-
-`def-rhs -> expr | fun-literal`
-
-`fun-literal -> param-list "->" type? block ";"`
+```
+decl -> "let" decl-body ("," decl-body)*
+decl-body -> IDENT (":" type)? ("=" expr)?
+def -> def-lhs ("=" expr)+
+def-lhs -> IDENT ("." IDENT)*
+fun-literal -> param-list "->" type? block
+fun-proto -> param-list "->" type
+```
 
 ## Type
-`type -> pri-type | ref-type`
-
-`fun-proto -> param-list "->" type`
+```
+type -> PRIMITIVE_TYPES | ref-type | func-type
+func-type -> param-list "->" type
+```
 
 ## Expression
-`block -> "{" stmt* "}" `
-
-`expr -> `*ID* `|` *INTLITERAL* `|` *FLOATLITERAL* `|` *BOOLLITERAL* `|` *STRINGLITERAL*
+```
+block -> "{" stmt* "}"
+expr -> func-call
+      | fun-literal
+      | IDENT
+      | INTLITERAL
+      | FLOATLITERAL
+      | BOOLLITERAL
+      | STRINGLITERAL
+func-call -> IDENT arg-list
+```
 
 ## Parameters
-`param-list -> "(" proper-para-list? ")"`
+```
+param-list -> "(" proper-param-list? ")"
+proper-param-list -> param ("," expr)*
+param -> IDENT ":" type
+
+arg-list -> "(" proper-arg-list? ")"
+proper-arg-list -> expr ("," expr)*
+```

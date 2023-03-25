@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Formatter};
 use crate::asts::{ASTTrait, ParamAST, TypeAST, TypeTrait};
+use crate::utils::format_list;
 
 pub struct FuncType {
     param_list: Vec<ParamAST>,
@@ -17,7 +18,7 @@ impl FuncType {
 
 impl Debug for FuncType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({:?}) -> {:?}", self.param_list, self.return_type)
+        write!(f, "({}) -> {:?}", format_list(&self.param_list), self.return_type)
     }
 }
 

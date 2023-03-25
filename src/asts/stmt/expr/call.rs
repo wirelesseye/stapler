@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use crate::asts::{ASTTrait, ExprStmt, IdentExpr, StmtTrait};
 use crate::asts::stmt::expr::ExprTrait;
+use crate::utils::format_list;
 
 pub struct CallExpr {
     ident: IdentExpr,
@@ -18,7 +19,7 @@ impl CallExpr {
 
 impl Debug for CallExpr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}({:?})", self.ident, self.arg_list)
+        write!(f, "{:?}({})", self.ident, format_list(&self.arg_list))
     }
 }
 

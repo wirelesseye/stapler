@@ -3,6 +3,7 @@ mod char_reader;
 mod lexer;
 mod parser;
 mod token;
+mod utils;
 
 use std::{env, fs::File};
 

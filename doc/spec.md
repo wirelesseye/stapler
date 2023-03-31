@@ -1,8 +1,8 @@
 # The staple language specification
 
-## Program
+## Module
 ```
-program -> stmt*
+module -> stmt*
 ```
 
 ## Statement
@@ -19,10 +19,12 @@ extern-block -> "{" decl* "}"
 
 ## Declearation & Definition
 ```
-decl -> "let" decl-body ("," decl-body)*
-decl-body -> IDENT (":" type)? ("=" expr)?
+decl -> "let" decl-pred ("," decl-body)*
+decl-pred -> IDENT (":" type)? ("=" expr)?
+
 def -> def-lhs ("=" expr)+
 def-lhs -> IDENT ("." IDENT)*
+
 fun-literal -> param-list "->" type? block
 fun-proto -> param-list "->" type
 ```

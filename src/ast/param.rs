@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter};
-use crate::asts::{ASTTrait, IdentExpr, TypeAST};
+use crate::ast::{IdentExpr, TypeAST};
 
 pub struct ParamAST {
     ident: IdentExpr,
@@ -10,7 +10,7 @@ impl ParamAST {
     pub fn new(ident: IdentExpr, r#type: TypeAST) -> Self {
         Self {
             ident,
-            r#type
+            r#type,
         }
     }
 }
@@ -20,5 +20,3 @@ impl Debug for ParamAST {
         write!(f, "{:?}: {:?}", self.ident, self.r#type)
     }
 }
-
-impl ASTTrait for ParamAST {}

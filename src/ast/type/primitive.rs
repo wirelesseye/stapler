@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter};
-use crate::asts::{ASTTrait, TypeTrait};
+use crate::ast::{Type, TypeKind};
 
 pub enum PrimitiveType {
     I8,
@@ -17,6 +17,8 @@ impl Debug for PrimitiveType {
     }
 }
 
-impl ASTTrait for PrimitiveType {}
-
-impl TypeTrait for PrimitiveType {}
+impl Type for PrimitiveType {
+    fn type_kind(&self) -> TypeKind {
+        TypeKind::Primitive
+    }
+}

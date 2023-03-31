@@ -1,15 +1,14 @@
 use std::fmt::{Debug, Formatter};
-use crate::asts::stmt::expr::ExprTrait;
-use crate::asts::{ASTTrait, StmtTrait};
+use crate::ast::{Expr, ExprKind};
 
 pub struct IntLiteralExpr {
     value: String
 }
 
 impl IntLiteralExpr {
-    pub fn new(value: &str) -> Self {
+    pub fn new(value: String) -> Self {
         Self {
-            value: value.to_string()
+            value
         }
     }
 }
@@ -20,8 +19,8 @@ impl Debug for IntLiteralExpr {
     }
 }
 
-impl StmtTrait for IntLiteralExpr {}
-
-impl ASTTrait for IntLiteralExpr {}
-
-impl ExprTrait for IntLiteralExpr {}
+impl Expr for IntLiteralExpr {
+    fn expr_kind(&self) -> ExprKind {
+        ExprKind::IntLiteral
+    }
+}

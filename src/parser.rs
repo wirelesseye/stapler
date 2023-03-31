@@ -1,8 +1,7 @@
 use std::{fs::File, mem};
-use crate::asts::*;
 use crate::lexer::Lexer;
-use crate::{expr_stmt, stmt_ast, type_ast};
 use crate::token::{Token, TokenKind};
+use crate::ast::*;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -28,40 +27,47 @@ impl<'a> Parser<'a> {
         if self.curr_token.kind() == expected_kind {
             self.accept_token()
         } else {
-            panic!("{:?} expected here", expected_kind);
+            panic!("{:?} expected here: {:?}", expected_kind, self.curr_token.begin());
         }
     }
 
-    pub fn parse(&mut self) -> ProgramAST {
-        self.parse_program()
+    pub fn parse(&mut self, module_name: String) -> ModuleAST {
+        self.parse_module(module_name)
     }
 
-    // ================== PROGRAM ==================
+    // ================== MODULE ==================
 
-    fn parse_program(&mut self) -> ProgramAST {
+    fn parse_module(&mut self, name: String) -> ModuleAST {
         let mut stmts: Vec<StmtAST> = Vec::new();
 
         while self.curr_token.kind() != TokenKind::EOF {
-            stmts.append(&mut self.parse_stmt());
+            stmts.push(self.parse_stmt());
         }
 
-        ProgramAST::new(BlockAST::new(stmts))
+        ModuleAST::new(name, BlockAST::new(stmts))
     }
 
     // ================== STATEMENTS ==================
 
-    fn parse_stmt(&mut self) -> Vec<StmtAST> {
+    fn parse_stmt(&mut self) -> StmtAST {
         match self.curr_token.kind() {
-            TokenKind::Let => self.parse_decl(),
-            TokenKind::Extern => vec![stmt_ast!(self.parse_extern())],
-            _ => vec![stmt_ast!(self.parse_expr())],
+            TokenKind::Let => self.parse_decl().into(),
+            TokenKind::Extern => self.parse_extern().into(),
+            _ => self.parse_expr().into(),
         }
     }
 
     fn parse_extern(&mut self) -> ExternStmt {
         self.expect_token(TokenKind::Extern);
-        let block = self.parse_block();
-        ExternStmt::new(block)
+        self.expect_token(TokenKind::LeftBrace);
+
+        let mut decl_list = Vec::new();
+        while self.curr_token.kind() != TokenKind::RightBrace {
+            decl_list.push(self.parse_decl());
+        }
+
+        self.accept_token();
+        ExternStmt::new(decl_list)
     }
 
     fn parse_block(&mut self) -> BlockAST {
@@ -74,7 +80,7 @@ impl<'a> Parser<'a> {
                 panic!("unterminated block");
             }
 
-            stmts.append(&mut self.parse_stmt());
+            stmts.push(self.parse_stmt());
         }
 
         self.accept_token();
@@ -83,21 +89,21 @@ impl<'a> Parser<'a> {
 
     // ================== DECLARATIONS ==================
 
-    fn parse_decl(&mut self) -> Vec<StmtAST> {
+    fn parse_decl(&mut self) -> DeclStmt {
         self.expect_token(TokenKind::Let);
 
-        let mut stmt_list: Vec<StmtAST> = Vec::new();
-        self.parse_decl_body(&mut stmt_list);
+        let mut decls: Vec<Decl> = Vec::new();
+        decls.push(self.parse_decl_pred());
 
         while self.curr_token.kind() == TokenKind::Comma {
             self.accept_token();
-            self.parse_decl_body(&mut stmt_list);
+            decls.push(self.parse_decl_pred());
         }
 
-        return stmt_list;
+        DeclStmt::new(decls)
     }
 
-    fn parse_decl_body(&mut self, stmt_list: &mut Vec<StmtAST>) {
+    fn parse_decl_pred(&mut self) -> Decl {
         let ident = self.parse_ident();
         let mut r#type = None;
 
@@ -106,14 +112,12 @@ impl<'a> Parser<'a> {
             r#type = Some(self.parse_type());
         }
 
-        let decl = DeclStmt::new(ident.clone(), r#type);
-        stmt_list.push(stmt_ast!(decl));
-
         if self.curr_token.kind() == TokenKind::Assign {
             self.accept_token();
-            let rhs = self.parse_expr();
-            let assign_expr = AssignExpr::new(ident, rhs);
-            stmt_list.push(stmt_ast!(expr_stmt!(assign_expr)));
+            let value = self.parse_expr();
+            Decl::new(ident, r#type, Some(value))
+        } else {
+            Decl::new(ident, r#type, None)
         }
     }
 
@@ -122,25 +126,22 @@ impl<'a> Parser<'a> {
     fn parse_expr(&mut self) -> ExprStmt {
         match self.curr_token.kind() {
             TokenKind::Identifier =>{
-                let ident = self.parse_ident();
+                let object = self.parse_object();
                 if self.curr_token.kind() == TokenKind::LeftParen {
                     let arg_list = self.parse_arg_list();
-                    let call = CallExpr::new(ident, arg_list);
-                    expr_stmt!(call)
+                    CallExpr::new(object, arg_list).into()
                 } else {
-                    expr_stmt!(ident)
+                    object.into()
                 }
             },
             TokenKind::IntLiteral => {
                 let token = self.accept_token();
-                let int_literal = IntLiteralExpr::new(token.spelling());
-                expr_stmt!(int_literal)
+                IntLiteralExpr::new(token.spelling().to_string()).into()
             },
             TokenKind::StrLiteral => {
                 let token = self.accept_token();
                 let spelling = token.spelling();
-                let str_literal = StrLiteralExpr::new(&spelling[1..spelling.len()-1]);
-                expr_stmt!(str_literal)
+                StrLiteralExpr::new(spelling[1..spelling.len()-1].to_string()).into()
             },
             _ => panic!("unexpected expression at {:?}", self.curr_token.begin()),
         }
@@ -148,7 +149,12 @@ impl<'a> Parser<'a> {
 
     fn parse_ident(&mut self) -> IdentExpr {
         let token = self.expect_token(TokenKind::Identifier);
-        IdentExpr::new(token.spelling())
+        IdentExpr::new(token.spelling().to_string())
+    }
+
+    fn parse_object(&mut self) -> ObjectExpr {
+        let ident = self.parse_ident();
+        ObjectExpr::new(ident, None)
     }
 
     // ================== TYPES ==================
@@ -157,23 +163,23 @@ impl<'a> Parser<'a> {
         match self.curr_token.kind() {
             TokenKind::I8 => {
                 self.accept_token();
-                type_ast!(PrimitiveType::I8)
+                PrimitiveType::I8.into()
             },
             TokenKind::I32 => {
                 self.accept_token();
-                type_ast!(PrimitiveType::I32)
+                PrimitiveType::I32.into()
             },
             TokenKind::I64 => {
                 self.accept_token();
-                type_ast!(PrimitiveType::I64)
+                PrimitiveType::I64.into()
             },
-            TokenKind::Multiply => type_ast!(self.parse_pointer()),
-            TokenKind::LeftParen => type_ast!(self.parse_func_type()),
+            TokenKind::Multiply => self.parse_pointer_type().into(),
+            TokenKind::LeftParen => self.parse_func_type().into(),
             _ => panic!("unknown type: {}", self.curr_token.spelling())
         }
     }
 
-    fn parse_pointer(&mut self) -> PointerType {
+    fn parse_pointer_type(&mut self) -> PointerType {
         self.expect_token(TokenKind::Multiply);
         let pointee = self.parse_type();
         PointerType::new(pointee)
@@ -183,7 +189,7 @@ impl<'a> Parser<'a> {
         let param_list = self.parse_param_list();
         self.expect_token(TokenKind::Arrow);
         let return_type = self.parse_type();
-        FuncType::new(param_list, return_type)
+        FuncType::new(return_type, param_list)
     }
 
     // ================== PARAMETERS ==================

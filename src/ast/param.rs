@@ -13,6 +13,10 @@ impl ParamAST {
             r#type,
         }
     }
+
+    pub fn r#type(&self) -> &TypeAST {
+        &self.r#type
+    }
 }
 
 impl Debug for ParamAST {

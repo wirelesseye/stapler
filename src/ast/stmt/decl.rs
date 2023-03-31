@@ -17,6 +17,18 @@ impl Decl {
             value,
         }
     }
+
+    pub fn ident(&self) -> &IdentExpr {
+        &self.ident
+    }
+
+    pub fn r#type(&self) -> Option<&TypeAST> {
+        self.r#type.as_ref()
+    }
+
+    pub fn value(&self) -> Option<&ExprStmt> {
+        self.value.as_ref()
+    }
 }
 
 impl Debug for Decl {
@@ -44,6 +56,10 @@ impl DeclStmt {
         Self {
             decls
         }
+    }
+
+    pub fn decls(&self) -> &[Decl] {
+        &self.decls
     }
 }
 

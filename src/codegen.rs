@@ -34,15 +34,6 @@ impl Codegen {
         for stmt in ast.stmts() {
             self.build_stmt(&module, &builder, stmt);
         }
-        // let i32_type = self.context.i32_type();
-        // let i8_type = self.context.i8_type();
-        // let printf_fn_type = i32_type.fn_type(&[i8_type.ptr_type(AddressSpace::default()).into()], true);
-        // let printf = module.add_function("printf", printf_fn_type, None);
-
-        // let builder = self.context.create_builder();
-        // builder.position_at_end(basic_block);
-        // let msg = builder.build_global_string_ptr("Hello world!", "msg");
-        // builder.build_call(printf, &[msg.as_pointer_value().into()], "print");
 
         if let Some(output) = output {
             module.print_to_file(format!("{}.ll", output)).unwrap();

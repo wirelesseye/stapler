@@ -34,7 +34,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut file = File::open(args.source).unwrap();
+    let mut file = File::open(&args.source).unwrap();
 
     if args.tokens {
         let mut lexer = Lexer::new(&file);
@@ -49,7 +49,7 @@ fn main() {
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
     }
 
-    let mut parser = Parser::new("hello_world", &file);
+    let mut parser = Parser::new(&args.source, &file);
     let module_ast = parser.parse();
 
     if args.ast {

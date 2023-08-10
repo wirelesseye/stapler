@@ -10,6 +10,10 @@ impl PtrType {
     pub fn new(pointee: Type) -> Self {
         Self { pointee }
     }
+
+    pub fn pointee(&self) -> &Type {
+        &self.pointee
+    }
 }
 
 impl TypeTrait for PtrType {

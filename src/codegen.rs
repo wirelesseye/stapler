@@ -7,7 +7,7 @@ use crate::ast::{
     expr::{CallExpr, Expr, ExprKind, IntLiteralExpr, StrLiteralExpr},
     module::ModuleAST,
     stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
-    types::{FuncType, IntType, Type, TypeKind},
+    types::{FuncType, IntType, PtrType, Type, TypeKind},
 };
 
 pub struct Codegen {
@@ -233,7 +233,7 @@ impl Codegen {
         match r#type.kind() {
             TypeKind::Int => self.compile_int_type(r#type.cast::<IntType>()).into(),
             TypeKind::Func => self.compile_func_type(r#type.cast::<FuncType>()).into(),
-            TypeKind::Ptr => todo!(),
+            TypeKind::Ptr => self.compile_ptr_type(r#type.cast::<PtrType>()).into(),
         }
     }
 
@@ -289,6 +289,22 @@ impl Codegen {
             IntType::I8 => self.context.i8_type(),
             IntType::I32 => self.context.i32_type(),
             IntType::I64 => self.context.i64_type(),
+        }
+    }
+
+    fn compile_ptr_type(&self, ptr_type: &PtrType) -> inkwell::types::PointerType {
+        use inkwell::types::AnyTypeEnum;
+
+        let pointee_type = self.compile_type(ptr_type.pointee());
+        match pointee_type {
+            AnyTypeEnum::ArrayType(_) => pointee_type.into_array_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::FloatType(_) => pointee_type.into_float_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::FunctionType(_) => pointee_type.into_function_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::IntType(_) => pointee_type.into_int_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::PointerType(_) => pointee_type.into_pointer_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::StructType(_) => pointee_type.into_struct_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::VectorType(_) => pointee_type.into_vector_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::VoidType(_) => panic!("Cannot point to void"),
         }
     }
 }

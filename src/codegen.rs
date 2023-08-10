@@ -264,23 +264,23 @@ impl Codegen {
             .collect();
 
         match return_type {
-            AnyTypeEnum::ArrayType(_) => return_type.into_array_type().fn_type(&param_types, false),
-            AnyTypeEnum::FloatType(_) => return_type.into_float_type().fn_type(&param_types, false),
+            AnyTypeEnum::ArrayType(_) => return_type.into_array_type().fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::FloatType(_) => return_type.into_float_type().fn_type(&param_types, func_type.is_var_args()),
             AnyTypeEnum::FunctionType(_) => return_type
                 .into_function_type()
                 .ptr_type(AddressSpace::default())
-                .fn_type(&param_types, false),
-            AnyTypeEnum::IntType(_) => return_type.into_int_type().fn_type(&param_types, false),
+                .fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::IntType(_) => return_type.into_int_type().fn_type(&param_types, func_type.is_var_args()),
             AnyTypeEnum::PointerType(_) => {
-                return_type.into_pointer_type().fn_type(&param_types, false)
+                return_type.into_pointer_type().fn_type(&param_types, func_type.is_var_args())
             }
             AnyTypeEnum::StructType(_) => {
-                return_type.into_struct_type().fn_type(&param_types, false)
+                return_type.into_struct_type().fn_type(&param_types, func_type.is_var_args())
             }
             AnyTypeEnum::VectorType(_) => {
-                return_type.into_vector_type().fn_type(&param_types, false)
+                return_type.into_vector_type().fn_type(&param_types, func_type.is_var_args())
             }
-            AnyTypeEnum::VoidType(_) => return_type.into_void_type().fn_type(&param_types, false),
+            AnyTypeEnum::VoidType(_) => return_type.into_void_type().fn_type(&param_types, func_type.is_var_args()),
         }
     }
 

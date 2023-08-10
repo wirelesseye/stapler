@@ -3,8 +3,8 @@
  */
 
 extern {
-    let printf: (format: *i8) -> i32 // external function from C
+    let printf: (format: *i8, ...) -> i32 // external function from C
 }
 
-printf("Hello world!\n")
+printf("Hello world%d!\n", 3)
 return 0

@@ -191,17 +191,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_func_type(&mut self) -> FuncType {
-        let param_list = self.parse_param_list();
+        let (param_list, is_var_args) = self.parse_param_list();
         self.expect_token(TokenKind::Arrow);
         let return_type = self.parse_type();
-        FuncType::new(return_type, param_list)
+        FuncType::new(return_type, param_list, is_var_args)
     }
 
-    fn parse_param_list(&mut self) -> Vec<Param> {
+    fn parse_param_list(&mut self) -> (Vec<Param>, bool) {
         self.expect_token(TokenKind::LeftParen);
 
         if self.curr_token.kind() == TokenKind::RightParen {
-            return Vec::new();
+            return (Vec::new(), false);
         }
 
         let list = self.parse_proper_param_list();
@@ -211,16 +211,35 @@ impl<'a> Parser<'a> {
         return list;
     }
 
-    fn parse_proper_param_list(&mut self) -> Vec<Param> {
+    fn parse_proper_param_list(&mut self) -> (Vec<Param>, bool) {
+        if self.curr_token.is_kind(TokenKind::Ellipsis) {
+            self.accept_token();
+            if self.curr_token.is_kind(TokenKind::RightParen) {
+                return (Vec::new(), true);
+            } else {
+                panic!("Unexpected token after ellipsis")
+            }
+        }
+
         let mut list = Vec::new();
         list.push(self.parse_param());
 
-        while self.curr_token.kind() == TokenKind::Comma {
+        while self.curr_token.is_kind(TokenKind::Comma) {
             self.accept_token();
-            list.push(self.parse_param());
+            if self.curr_token.is_kind(TokenKind::Ellipsis) {
+                self.accept_token();
+                if self.curr_token.is_kind(TokenKind::RightParen) {
+                    return (list, true);
+                } else {
+                    panic!("Unexpected token after ellipsis")
+                }
+            } else {
+                list.push(self.parse_param());
+            }
+            
         }
 
-        return list;
+        return (list, false);
     }
 
     fn parse_param(&mut self) -> Param {

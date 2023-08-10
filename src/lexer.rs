@@ -144,6 +144,12 @@ impl<'a> Lexer<'a> {
 
                 if self.curr_char == Some('.') {
                     self.accept_char();
+
+                    if self.curr_char == Some('.') {
+                        self.accept_char();
+                        return TokenKind::Ellipsis;
+                    }
+                    
                     return TokenKind::To;
                 }
 

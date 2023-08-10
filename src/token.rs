@@ -57,6 +57,7 @@ pub enum TokenKind {
     Colon,
     Semicolon,
     To,
+    Ellipsis,
 
     // Operators
     Plus,

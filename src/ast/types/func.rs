@@ -6,14 +6,16 @@ use super::{TypeTrait, TypeKind, Type};
 
 pub struct FuncType {
     return_type: Type,
-    params: Vec<Param>
+    params: Vec<Param>,
+    is_var_args: bool,
 }
 
 impl FuncType {
-    pub fn new(return_type: Type, params: Vec<Param>) -> Self {
+    pub fn new(return_type: Type, params: Vec<Param>, is_var_args: bool) -> Self {
         Self {
             return_type,
-            params
+            params,
+            is_var_args
         }
     }
 
@@ -23,6 +25,10 @@ impl FuncType {
 
     pub fn params(&self) -> &[Param] {
         &self.params
+    }
+
+    pub fn is_var_args(&self) -> bool {
+        self.is_var_args
     }
 }
 
@@ -38,6 +44,11 @@ impl TypeTrait for FuncType {
 
 impl Debug for FuncType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}) -> {:?}", join_list(&self.params, ", "), self.return_type)
+        write!(f, "({}", join_list(&self.params, ", "))?;
+        if self.is_var_args() {
+            write!(f, ", ...")?;
+        }
+        write!(f, ") -> {:?}", self.return_type)?;
+        Ok(())
     }
 }

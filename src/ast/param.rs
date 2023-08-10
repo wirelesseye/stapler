@@ -1,26 +1,28 @@
-use std::fmt::{Debug, Formatter};
-use crate::ast::{IdentExpr, TypeAST};
+use std::fmt::Debug;
 
-pub struct ParamAST {
-    ident: IdentExpr,
-    r#type: TypeAST,
+use super::{ident::Ident, types::Type};
+
+pub struct Param {
+    ident: Ident,
+    r#type: Type,
 }
 
-impl ParamAST {
-    pub fn new(ident: IdentExpr, r#type: TypeAST) -> Self {
-        Self {
-            ident,
-            r#type,
-        }
+impl Param {
+    pub fn new(ident: Ident, r#type: Type) -> Self {
+        Self { ident, r#type }
     }
 
-    pub fn r#type(&self) -> &TypeAST {
+    pub fn ident(&self) -> &Ident {
+        &self.ident
+    }
+
+    pub fn r#type(&self) -> &Type {
         &self.r#type
     }
 }
 
-impl Debug for ParamAST {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl Debug for Param {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}: {:?}", self.ident, self.r#type)
     }
 }

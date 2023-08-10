@@ -332,6 +332,7 @@ impl<'a> Lexer<'a> {
             "import" => Some(TokenKind::Import),
             "let" => Some(TokenKind::Let),
             "mut" => Some(TokenKind::Mut),
+            "return" => Some(TokenKind::Return),
 
             "i8" => Some(TokenKind::I8),
             "i32" => Some(TokenKind::I32),

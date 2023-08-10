@@ -1,28 +1,28 @@
-use std::{fmt::Debug, any::Any};
+use std::{any::Any, fmt::Debug};
 
 use crate::ast::expr::Expr;
 
 use super::{StmtTrait, StmtKind};
 
-pub struct ExprStmt {
-    expr: Expr
+pub struct ReturnStmt {
+    expr: Option<Expr>
 }
 
-impl ExprStmt {
-    pub fn new(expr: Expr) -> Self {
+impl ReturnStmt {
+    pub fn new(expr: Option<Expr>) -> Self {
         Self {
             expr
         }
     }
 
-    pub fn expr(&self) -> &Expr {
+    pub fn expr(&self) -> &Option<Expr> {
         &self.expr
     }
 }
 
-impl StmtTrait for ExprStmt {
+impl StmtTrait for ReturnStmt {
     fn kind(&self) -> StmtKind {
-        StmtKind::Expr
+        StmtKind::Return
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -30,8 +30,8 @@ impl StmtTrait for ExprStmt {
     }
 }
 
-impl Debug for ExprStmt {
+impl Debug for ReturnStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.expr)
+        write!(f, "return {:?}", self.expr)
     }
 }

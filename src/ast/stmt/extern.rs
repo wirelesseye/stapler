@@ -1,27 +1,37 @@
-use std::fmt::{Debug, Formatter};
-use crate::ast::{DeclStmt, Stmt, StmtKind};
-use crate::utils::format_list;
+use std::{fmt::Debug, any::Any};
+
+use crate::utils::join_list;
+
+use super::{decl::DeclStmt, StmtKind, StmtTrait};
 
 pub struct ExternStmt {
-    decl_list: Vec<DeclStmt>
+    decl_stmts: Vec<DeclStmt>,
 }
 
 impl ExternStmt {
-    pub fn new(decl_list: Vec<DeclStmt>) -> Self {
+    pub fn new(decl_stmts: Vec<DeclStmt>) -> Self {
         Self {
-            decl_list
+            decl_stmts
         }
+    }
+
+    pub fn decl_stmts(&self) -> &[DeclStmt] {
+        &self.decl_stmts
+    }
+}
+
+impl StmtTrait for ExternStmt {
+    fn kind(&self) -> StmtKind {
+        StmtKind::Extern
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
 impl Debug for ExternStmt {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "extern {{\n{}\n}}", format_list(&self.decl_list, "\n"))
-    }
-}
-
-impl Stmt for ExternStmt {
-    fn stmt_kind(&self) -> StmtKind {
-        StmtKind::Extern
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "extern {{\n{}\n}}", join_list(&self.decl_stmts, "\n"))
     }
 }

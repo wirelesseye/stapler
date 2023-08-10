@@ -1,5 +1,0 @@
-test("str1 add".format(test()), "str2", 3)
-
-let sum = {
-    -1 + 3.1415926 + 5
-}

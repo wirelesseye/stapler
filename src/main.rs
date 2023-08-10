@@ -1,18 +1,61 @@
+use std::fs::File;
+use std::io::Seek;
+
+use clap::Parser as ClapParser;
+use codegen::Codegen;
+use parser::Parser;
+
+use crate::lexer::Lexer;
+use crate::token::TokenKind;
+
 mod ast;
-mod compiler;
 mod char_reader;
+mod codegen;
 mod lexer;
 mod parser;
 mod token;
 mod utils;
 
-use std::{env, fs::File};
-use crate::compiler::Compiler;
+#[derive(ClapParser, Debug)]
+struct Args {
+    source: String,
+
+    /// Print tokens
+    #[arg(short = 't', long)]
+    tokens: bool,
+
+    /// Print AST
+    #[arg(short = 'a', long)]
+    ast: bool,
+
+    #[arg(short, long)]
+    output: Option<String>,
+}
 
 fn main() {
-    let filename = env::args().nth(1).expect("invalid file name");
-    let file = File::open(&filename).unwrap();
+    let args = Args::parse();
+    let mut file = File::open(args.source).unwrap();
 
-    let compiler = Compiler::new();
-    compiler.compile(&file, filename);
+    if args.tokens {
+        let mut lexer = Lexer::new(&file);
+        loop {
+            let token = lexer.next_token();
+            if token.is_kind(TokenKind::EOF) {
+                break;
+            }
+            println!("{:?}", token);
+        }
+        println!();
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+    }
+
+    let mut parser = Parser::new("hello_world", &file);
+    let module_ast = parser.parse();
+
+    if args.ast {
+        println!("{:?}\n", module_ast);
+    }
+
+    let codegen = Codegen::new();
+    codegen.compile_module(&module_ast, args.output.as_deref());
 }

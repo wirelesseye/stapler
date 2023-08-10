@@ -1,118 +1,125 @@
 use std::{fs::File, mem};
-use crate::lexer::Lexer;
-use crate::token::{Token, TokenKind};
-use crate::ast::*;
+
+use crate::{
+    ast::{
+        decl::Decl,
+        ident::Ident,
+        module::ModuleAST,
+        stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, ReturnStmt},
+        types::{FuncType, IntType, Type, PtrType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
+    },
+    lexer::Lexer,
+    token::{Token, TokenKind},
+};
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     curr_token: Token,
+    module_name: String,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a File) -> Self {
+    pub fn new(module_name: &str, input: &'a File) -> Self {
         let mut lexer = Lexer::new(input);
         let curr_token = lexer.next_token();
 
         Self {
             lexer,
-            curr_token
+            curr_token,
+            module_name: module_name.to_string(),
         }
     }
+
+    pub fn parse(&mut self) -> ModuleAST {
+        self.parse_module()
+    }
+
+    // ==================================================
 
     fn accept_token(&mut self) -> Token {
         mem::replace(&mut self.curr_token, self.lexer.next_token())
     }
 
     fn expect_token(&mut self, expected_kind: TokenKind) -> Token {
-        if self.curr_token.kind() == expected_kind {
+        if self.curr_token.is_kind(expected_kind) {
             self.accept_token()
         } else {
-            panic!("{:?} expected here: {:?}", expected_kind, self.curr_token.begin());
+            panic!(
+                "{:?} expected here: {:?}",
+                expected_kind,
+                self.curr_token.begin()
+            );
         }
     }
 
-    pub fn parse(&mut self, module_name: String) -> ModuleAST {
-        self.parse_module(module_name)
-    }
+    // ==================================================
 
-    // ================== MODULE ==================
+    fn parse_module(&mut self) -> ModuleAST {
+        let mut stmts: Vec<Stmt> = Vec::new();
 
-    fn parse_module(&mut self, name: String) -> ModuleAST {
-        let mut stmts: Vec<StmtAST> = Vec::new();
-
-        while self.curr_token.kind() != TokenKind::EOF {
+        while !self.curr_token.is_kind(TokenKind::EOF) {
             stmts.push(self.parse_stmt());
         }
 
-        ModuleAST::new(name, BlockAST::new(stmts))
+        ModuleAST::new(self.module_name.clone(), stmts)
     }
 
-    // ================== STATEMENTS ==================
+    // ==================================================
 
-    fn parse_stmt(&mut self) -> StmtAST {
+    fn parse_stmt(&mut self) -> Stmt {
         match self.curr_token.kind() {
-            TokenKind::Let => self.parse_decl().into(),
-            TokenKind::Extern => self.parse_extern().into(),
-            _ => self.parse_expr().into(),
+            TokenKind::Let => self.parse_decl_stmt().into(),
+            TokenKind::Extern => self.parse_extern_stmt().into(),
+            TokenKind::Return => self.parse_return_stmt().into(),
+            _ => ExprStmt::new(self.parse_expr()).into(),
         }
     }
 
-    fn parse_extern(&mut self) -> ExternStmt {
+    fn parse_extern_stmt(&mut self) -> ExternStmt {
         self.expect_token(TokenKind::Extern);
         self.expect_token(TokenKind::LeftBrace);
 
         let mut decl_list = Vec::new();
-        while self.curr_token.kind() != TokenKind::RightBrace {
-            decl_list.push(self.parse_decl());
+        while !self.curr_token.is_kind(TokenKind::RightBrace) {
+            decl_list.push(self.parse_decl_stmt());
         }
 
         self.accept_token();
         ExternStmt::new(decl_list)
     }
 
-    fn parse_block(&mut self) -> BlockAST {
-        self.expect_token(TokenKind::LeftBrace);
-
-        let mut stmts: Vec<StmtAST> = Vec::new();
-
-        while self.curr_token.kind() != TokenKind::RightBrace {
-            if self.curr_token.kind() == TokenKind::EOF {
-                panic!("unterminated block");
-            }
-
-            stmts.push(self.parse_stmt());
-        }
-
-        self.accept_token();
-        BlockAST::new(stmts)
-    }
-
-    // ================== DECLARATIONS ==================
-
-    fn parse_decl(&mut self) -> DeclStmt {
+    fn parse_decl_stmt(&mut self) -> DeclStmt {
         self.expect_token(TokenKind::Let);
 
         let mut decls: Vec<Decl> = Vec::new();
-        decls.push(self.parse_decl_pred());
+        decls.push(self.parse_decl());
 
-        while self.curr_token.kind() == TokenKind::Comma {
+        while self.curr_token.is_kind(TokenKind::Comma) {
             self.accept_token();
-            decls.push(self.parse_decl_pred());
+            decls.push(self.parse_decl());
         }
 
         DeclStmt::new(decls)
     }
 
-    fn parse_decl_pred(&mut self) -> Decl {
+    fn parse_return_stmt(&mut self) -> ReturnStmt {
+        self.expect_token(TokenKind::Return);
+        let expr = self.parse_expr();
+        ReturnStmt::new(Some(expr))
+    }
+
+    // ==================================================
+
+    fn parse_decl(&mut self) -> Decl {
         let ident = self.parse_ident();
         let mut r#type = None;
 
-        if self.curr_token.kind() == TokenKind::Colon {
+        if self.curr_token.is_kind(TokenKind::Colon) {
             self.accept_token();
             r#type = Some(self.parse_type());
         }
 
-        if self.curr_token.kind() == TokenKind::Assign {
+        if self.curr_token.is_kind(TokenKind::Assign) {
             self.accept_token();
             let value = self.parse_expr();
             Decl::new(ident, r#type, Some(value))
@@ -121,17 +128,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // ================== EXPRESSIONS ==================
-
-    fn parse_expr(&mut self) -> ExprStmt {
+    fn parse_expr(&mut self) -> Expr {
         match self.curr_token.kind() {
             TokenKind::Identifier =>{
-                let object = self.parse_object();
+                let ident = self.parse_ident();
                 if self.curr_token.kind() == TokenKind::LeftParen {
                     let arg_list = self.parse_arg_list();
-                    CallExpr::new(object, arg_list).into()
+                    CallExpr::new(ident, arg_list).into()
                 } else {
-                    object.into()
+                    IdentExpr::new(ident).into()
                 }
             },
             TokenKind::IntLiteral => {
@@ -147,42 +152,42 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ident(&mut self) -> IdentExpr {
+    // ==================================================
+
+    fn parse_ident(&mut self) -> Ident {
         let token = self.expect_token(TokenKind::Identifier);
-        IdentExpr::new(token.spelling().to_string())
+        Ident::new(token.spelling().to_string())
     }
 
-    fn parse_object(&mut self) -> ObjectExpr {
-        let ident = self.parse_ident();
-        ObjectExpr::new(ident, None)
-    }
+    // ==================================================
 
-    // ================== TYPES ==================
-
-    fn parse_type(&mut self) -> TypeAST {
+    fn parse_type(&mut self) -> Type {
         match self.curr_token.kind() {
             TokenKind::I8 => {
                 self.accept_token();
-                PrimitiveType::I8.into()
-            },
+                IntType::I8.into()
+            }
             TokenKind::I32 => {
                 self.accept_token();
-                PrimitiveType::I32.into()
-            },
+                IntType::I32.into()
+            }
             TokenKind::I64 => {
                 self.accept_token();
-                PrimitiveType::I64.into()
+                IntType::I64.into()
             },
-            TokenKind::Multiply => self.parse_pointer_type().into(),
+            TokenKind::Multiply => self.parse_ptr_type().into(),
             TokenKind::LeftParen => self.parse_func_type().into(),
-            _ => panic!("unknown type: {}", self.curr_token.spelling())
+            _ => panic!(
+                "Unexpected character when parsing type: {}",
+                self.curr_token.spelling()
+            ),
         }
     }
 
-    fn parse_pointer_type(&mut self) -> PointerType {
+    fn parse_ptr_type(&mut self) -> PtrType {
         self.expect_token(TokenKind::Multiply);
         let pointee = self.parse_type();
-        PointerType::new(pointee)
+        PtrType::new(pointee)
     }
 
     fn parse_func_type(&mut self) -> FuncType {
@@ -192,9 +197,7 @@ impl<'a> Parser<'a> {
         FuncType::new(return_type, param_list)
     }
 
-    // ================== PARAMETERS ==================
-
-    fn parse_param_list(&mut self) -> Vec<ParamAST> {
+    fn parse_param_list(&mut self) -> Vec<Param> {
         self.expect_token(TokenKind::LeftParen);
 
         if self.curr_token.kind() == TokenKind::RightParen {
@@ -208,7 +211,7 @@ impl<'a> Parser<'a> {
         return list;
     }
 
-    fn parse_proper_param_list(&mut self) -> Vec<ParamAST> {
+    fn parse_proper_param_list(&mut self) -> Vec<Param> {
         let mut list = Vec::new();
         list.push(self.parse_param());
 
@@ -220,14 +223,14 @@ impl<'a> Parser<'a> {
         return list;
     }
 
-    fn parse_param(&mut self) -> ParamAST {
+    fn parse_param(&mut self) -> Param {
         let ident = self.parse_ident();
         self.expect_token(TokenKind::Colon);
         let r#type = self.parse_type();
-        ParamAST::new(ident, r#type)
+        Param::new(ident, r#type)
     }
 
-    fn parse_arg_list(&mut self) -> Vec<ExprStmt> {
+    fn parse_arg_list(&mut self) -> Vec<Arg> {
         self.expect_token(TokenKind::LeftParen);
 
         if self.curr_token.kind() == TokenKind::RightParen {
@@ -241,16 +244,15 @@ impl<'a> Parser<'a> {
         return list;
     }
 
-    fn parse_proper_arg_list(&mut self) -> Vec<ExprStmt> {
+    fn parse_proper_arg_list(&mut self) -> Vec<Arg> {
         let mut list = Vec::new();
-        list.push(self.parse_expr());
+        list.push(Arg::new(self.parse_expr()));
 
         while self.curr_token.kind() == TokenKind::Comma {
             self.accept_token();
-            list.push(self.parse_expr());
+            list.push(Arg::new(self.parse_expr()));
         }
 
         return list;
     }
 }
-

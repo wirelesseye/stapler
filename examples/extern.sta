@@ -1,0 +1,10 @@
+/**
+ * multi-line comments
+ */
+
+extern {
+    let printf: (format: i8) -> i32 // external function from C
+}
+
+printf("Hello world!\n")
+return 0

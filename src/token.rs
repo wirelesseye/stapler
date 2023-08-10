@@ -21,6 +21,10 @@ impl Token {
     pub fn kind(&self) -> TokenKind {
         self.kind
     }
+
+    pub fn is_kind(&self, kind: TokenKind) -> bool {
+        self.kind() == kind
+    }
     
     pub fn spelling(&self) -> &str {
         &self.spelling
@@ -38,6 +42,7 @@ pub enum TokenKind {
     Import,
     Let,
     Mut,
+    Return,
 
     // Primitive types
     I8,

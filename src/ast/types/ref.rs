@@ -1,28 +1,28 @@
-use std::{fmt::Debug, any::Any};
+use std::{any::Any, fmt::Debug};
 
 use crate::ast::ident::Ident;
 
-use super::{ExprTrait, ExprKind};
+use super::{TypeTrait, TypeKind};
 
-pub struct IdentExpr {
+pub struct RefType {
     ident: Ident
 }
 
-impl IdentExpr {
+impl RefType {
     pub fn new(ident: Ident) -> Self {
         Self {
             ident
         }
     }
-
+    
     pub fn ident(&self) -> &Ident {
         &self.ident
     }
 }
 
-impl ExprTrait for IdentExpr {
-    fn kind(&self) -> ExprKind {
-        ExprKind::Ident
+impl TypeTrait for RefType {
+    fn kind(&self) -> TypeKind {
+        TypeKind::Ref
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -30,8 +30,8 @@ impl ExprTrait for IdentExpr {
     }
 }
 
-impl Debug for IdentExpr {
+impl Debug for RefType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.ident)
+        write!(f, "{:?}", self.ident())
     }
 }

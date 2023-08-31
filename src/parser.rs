@@ -6,7 +6,7 @@ use crate::{
         ident::Ident,
         module::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, ReturnStmt},
-        types::{FuncType, IntType, Type, PtrType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
+        types::{FuncType, IntType, Type, PtrType, RefType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -177,8 +177,9 @@ impl<'a> Parser<'a> {
             },
             TokenKind::Multiply => self.parse_ptr_type().into(),
             TokenKind::LeftParen => self.parse_func_type().into(),
+            TokenKind::Identifier => self.parse_ref_type().into(),
             _ => panic!(
-                "Unexpected character when parsing type: {}",
+                "Unexpected token when parsing type: {}",
                 self.curr_token.spelling()
             ),
         }
@@ -196,6 +197,13 @@ impl<'a> Parser<'a> {
         let return_type = self.parse_type();
         FuncType::new(return_type, param_list, is_var_args)
     }
+
+    fn parse_ref_type(&mut self) -> RefType {
+        let ident = self.parse_ident();
+        RefType::new(ident)
+    }
+
+    // ==================================================
 
     fn parse_param_list(&mut self) -> (Vec<Param>, bool) {
         self.expect_token(TokenKind::LeftParen);

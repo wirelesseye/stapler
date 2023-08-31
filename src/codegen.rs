@@ -1,27 +1,36 @@
-use std::process::Command;
+use std::{cell::RefCell, process::Command};
 
-use inkwell::{builder::Builder, context::Context, module::Module, values::AnyValue, AddressSpace};
+use inkwell::{
+    builder::Builder,
+    context::Context,
+    module::Module,
+    types::AnyTypeEnum,
+    values::{AnyValue, AnyValueEnum},
+    AddressSpace,
+};
 
 use crate::ast::{
     decl::Decl,
-    expr::{CallExpr, Expr, ExprKind, IntLiteralExpr, StrLiteralExpr},
+    expr::{CallExpr, Expr, ExprKind, IdentExpr, IntLiteralExpr, StrLiteralExpr},
     module::ModuleAST,
     stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
-    types::{FuncType, IntType, PtrType, Type, TypeKind},
+    types::{FuncType, IntType, PtrType, RefType, Type, TypeKind},
 };
 
-pub struct Codegen {
+pub struct Codegen<'ctx> {
     context: Context,
+    decls: RefCell<Vec<(String, AnyTypeEnum<'ctx>, AnyValueEnum<'ctx>)>>,
 }
 
-impl Codegen {
+impl<'ctx> Codegen<'ctx> {
     pub fn new() -> Self {
         Self {
             context: Context::create(),
+            decls: RefCell::new(Vec::new()),
         }
     }
 
-    pub fn compile_module(&self, ast: &ModuleAST, output: Option<&str>) {
+    pub fn build_module(&'ctx self, ast: &ModuleAST, output: Option<&str>) {
         let module = self.context.create_module(ast.name());
 
         let i32_type = self.context.i32_type();
@@ -55,7 +64,18 @@ impl Codegen {
         }
     }
 
-    fn build_stmt<'ctx>(&'ctx self, module: &Module<'ctx>, builder: &Builder<'ctx>, stmt: &Stmt) {
+    fn retrieve_decl(&self, name: &str) -> Option<(AnyTypeEnum, AnyValueEnum)> {
+        for (n, t, v) in self.decls.borrow().iter().rev() {
+            if n == name {
+                return Some((t.clone(), v.clone()));
+            }
+        }
+        None
+    }
+
+    // ==================================================
+
+    fn build_stmt(&'ctx self, module: &Module<'ctx>, builder: &Builder<'ctx>, stmt: &Stmt) {
         match stmt.kind() {
             StmtKind::Extern => self.build_extern_stmt(module, builder, stmt.cast::<ExternStmt>()),
             StmtKind::Decl => self.build_decl_stmt(module, builder, stmt.cast::<DeclStmt>()),
@@ -64,10 +84,10 @@ impl Codegen {
         }
     }
 
-    fn build_extern_stmt<'ctx>(
+    fn build_extern_stmt(
         &'ctx self,
         module: &Module<'ctx>,
-        builder: &Builder,
+        builder: &Builder<'ctx>,
         extern_stmt: &ExternStmt,
     ) {
         for decl_stmt in extern_stmt.decl_stmts() {
@@ -75,10 +95,10 @@ impl Codegen {
         }
     }
 
-    fn build_decl_stmt<'ctx>(
+    fn build_decl_stmt(
         &'ctx self,
         module: &Module<'ctx>,
-        builder: &Builder,
+        builder: &Builder<'ctx>,
         decl_stmt: &DeclStmt,
     ) {
         for decl in decl_stmt.decls() {
@@ -86,7 +106,7 @@ impl Codegen {
         }
     }
 
-    fn build_expr_stmt<'ctx>(
+    fn build_expr_stmt(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
@@ -95,13 +115,12 @@ impl Codegen {
         self.build_expr(module, builder, expr_stmt.expr());
     }
 
-    fn build_return_stmt<'ctx>(
+    fn build_return_stmt(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
         return_stmt: &ReturnStmt,
     ) {
-        use inkwell::values::AnyValueEnum;
         if let Some(expr) = return_stmt.expr() {
             let llvm_value = self.build_expr(module, builder, expr);
             match llvm_value {
@@ -135,30 +154,47 @@ impl Codegen {
 
     // ==================================================
 
-    fn build_decl<'ctx>(&'ctx self, module: &Module<'ctx>, builder: &Builder, decl: &Decl) {
-        let r#type = decl.r#type().unwrap();
-        match r#type.kind() {
-            TypeKind::Func => self.build_func_decl(module, builder, decl),
-            _ => todo!(),
+    fn build_decl(&'ctx self, module: &Module<'ctx>, builder: &Builder<'ctx>, decl: &Decl) {
+        if decl.r#type().unwrap().kind() == TypeKind::Func {
+            self.build_func_decl(module, builder, decl);
+            return;
+        }
+
+        if let Some(expr) = decl.value() {
+            let name = decl.ident().value().to_string();
+            let llvm_type = self.compile_type(decl.r#type().unwrap());
+            let llvm_value = self.build_expr(module, builder, expr);
+            self.decls.borrow_mut().push((name, llvm_type, llvm_value));
         }
     }
 
-    fn build_func_decl<'ctx>(&'ctx self, module: &Module<'ctx>, builder: &Builder, decl: &Decl) {
+    fn build_func_decl(
+        &'ctx self,
+        module: &Module<'ctx>,
+        builder: &Builder,
+        decl: &Decl,
+    ) -> inkwell::values::FunctionValue {
         let name = decl.ident().value();
         let func_type = decl.r#type().unwrap().cast::<FuncType>();
         let llvm_func_type = self.compile_func_type(func_type);
 
-        module.add_function(name, llvm_func_type, None);
+        let val = module.add_function(name, llvm_func_type, None);
+        self.decls.borrow_mut().push((
+            name.to_string(),
+            llvm_func_type.into(),
+            val.as_any_value_enum(),
+        ));
+        return val;
     }
 
     // ==================================================
 
-    fn build_expr<'ctx>(
+    fn build_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
         expr: &Expr,
-    ) -> inkwell::values::AnyValueEnum {
+    ) -> AnyValueEnum {
         match expr.kind() {
             ExprKind::Call => self
                 .build_call_expr(module, builder, expr.cast::<CallExpr>())
@@ -169,11 +205,11 @@ impl Codegen {
             ExprKind::StrLiteral => self
                 .build_str_literial_expr(module, builder, expr.cast::<StrLiteralExpr>())
                 .as_any_value_enum(),
-            ExprKind::Ident => todo!(),
+            ExprKind::Ident => self.build_ident_expr(module, builder, expr.cast::<IdentExpr>()),
         }
     }
 
-    fn build_call_expr<'ctx>(
+    fn build_call_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
@@ -187,27 +223,23 @@ impl Codegen {
             .map(|arg| {
                 let llvm_value = self.build_expr(module, builder, arg.expr());
                 match llvm_value {
-                    inkwell::values::AnyValueEnum::ArrayValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::IntValue(_) => {
-                        llvm_value.into_int_value().into()
-                    }
-                    inkwell::values::AnyValueEnum::FloatValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::PhiValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::FunctionValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::PointerValue(_) => {
-                        llvm_value.into_pointer_value().into()
-                    }
-                    inkwell::values::AnyValueEnum::StructValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::VectorValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::InstructionValue(_) => todo!(),
-                    inkwell::values::AnyValueEnum::MetadataValue(_) => todo!(),
+                    AnyValueEnum::ArrayValue(_) => todo!(),
+                    AnyValueEnum::IntValue(_) => llvm_value.into_int_value().into(),
+                    AnyValueEnum::FloatValue(_) => todo!(),
+                    AnyValueEnum::PhiValue(_) => todo!(),
+                    AnyValueEnum::FunctionValue(_) => todo!(),
+                    AnyValueEnum::PointerValue(_) => llvm_value.into_pointer_value().into(),
+                    AnyValueEnum::StructValue(_) => todo!(),
+                    AnyValueEnum::VectorValue(_) => todo!(),
+                    AnyValueEnum::InstructionValue(_) => todo!(),
+                    AnyValueEnum::MetadataValue(_) => todo!(),
                 }
             })
             .collect();
         builder.build_call(function, &args, "")
     }
 
-    fn build_str_literial_expr<'ctx>(
+    fn build_str_literial_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
@@ -216,7 +248,7 @@ impl Codegen {
         builder.build_global_string_ptr(str_literial.value(), "")
     }
 
-    fn build_int_literial_expr<'ctx>(
+    fn build_int_literial_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
@@ -227,18 +259,28 @@ impl Codegen {
             .const_int(str::parse::<u64>(int_literial.value()).unwrap(), false)
     }
 
+    fn build_ident_expr(
+        &'ctx self,
+        module: &Module<'ctx>,
+        builder: &Builder<'ctx>,
+        ident_expr: &IdentExpr,
+    ) -> AnyValueEnum {
+        let (t, v) = self.retrieve_decl(ident_expr.ident().value()).unwrap();
+        return v;
+    }
+
     // ==================================================
 
-    fn compile_type(&self, r#type: &Type) -> inkwell::types::AnyTypeEnum {
+    fn compile_type(&self, r#type: &Type) -> AnyTypeEnum {
         match r#type.kind() {
             TypeKind::Int => self.compile_int_type(r#type.cast::<IntType>()).into(),
             TypeKind::Func => self.compile_func_type(r#type.cast::<FuncType>()).into(),
             TypeKind::Ptr => self.compile_ptr_type(r#type.cast::<PtrType>()).into(),
+            TypeKind::Ref => self.compile_ref_type(r#type.cast::<RefType>()).into(),
         }
     }
 
     fn compile_func_type(&self, func_type: &FuncType) -> inkwell::types::FunctionType {
-        use inkwell::types::AnyTypeEnum;
         use inkwell::types::BasicMetadataTypeEnum;
 
         let return_type = self.compile_type(func_type.return_type());
@@ -264,23 +306,31 @@ impl Codegen {
             .collect();
 
         match return_type {
-            AnyTypeEnum::ArrayType(_) => return_type.into_array_type().fn_type(&param_types, func_type.is_var_args()),
-            AnyTypeEnum::FloatType(_) => return_type.into_float_type().fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::ArrayType(_) => return_type
+                .into_array_type()
+                .fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::FloatType(_) => return_type
+                .into_float_type()
+                .fn_type(&param_types, func_type.is_var_args()),
             AnyTypeEnum::FunctionType(_) => return_type
                 .into_function_type()
                 .ptr_type(AddressSpace::default())
                 .fn_type(&param_types, func_type.is_var_args()),
-            AnyTypeEnum::IntType(_) => return_type.into_int_type().fn_type(&param_types, func_type.is_var_args()),
-            AnyTypeEnum::PointerType(_) => {
-                return_type.into_pointer_type().fn_type(&param_types, func_type.is_var_args())
-            }
-            AnyTypeEnum::StructType(_) => {
-                return_type.into_struct_type().fn_type(&param_types, func_type.is_var_args())
-            }
-            AnyTypeEnum::VectorType(_) => {
-                return_type.into_vector_type().fn_type(&param_types, func_type.is_var_args())
-            }
-            AnyTypeEnum::VoidType(_) => return_type.into_void_type().fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::IntType(_) => return_type
+                .into_int_type()
+                .fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::PointerType(_) => return_type
+                .into_pointer_type()
+                .fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::StructType(_) => return_type
+                .into_struct_type()
+                .fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::VectorType(_) => return_type
+                .into_vector_type()
+                .fn_type(&param_types, func_type.is_var_args()),
+            AnyTypeEnum::VoidType(_) => return_type
+                .into_void_type()
+                .fn_type(&param_types, func_type.is_var_args()),
         }
     }
 
@@ -293,18 +343,36 @@ impl Codegen {
     }
 
     fn compile_ptr_type(&self, ptr_type: &PtrType) -> inkwell::types::PointerType {
-        use inkwell::types::AnyTypeEnum;
-
         let pointee_type = self.compile_type(ptr_type.pointee());
         match pointee_type {
-            AnyTypeEnum::ArrayType(_) => pointee_type.into_array_type().ptr_type(AddressSpace::default()),
-            AnyTypeEnum::FloatType(_) => pointee_type.into_float_type().ptr_type(AddressSpace::default()),
-            AnyTypeEnum::FunctionType(_) => pointee_type.into_function_type().ptr_type(AddressSpace::default()),
-            AnyTypeEnum::IntType(_) => pointee_type.into_int_type().ptr_type(AddressSpace::default()),
-            AnyTypeEnum::PointerType(_) => pointee_type.into_pointer_type().ptr_type(AddressSpace::default()),
-            AnyTypeEnum::StructType(_) => pointee_type.into_struct_type().ptr_type(AddressSpace::default()),
-            AnyTypeEnum::VectorType(_) => pointee_type.into_vector_type().ptr_type(AddressSpace::default()),
+            AnyTypeEnum::ArrayType(_) => pointee_type
+                .into_array_type()
+                .ptr_type(AddressSpace::default()),
+            AnyTypeEnum::FloatType(_) => pointee_type
+                .into_float_type()
+                .ptr_type(AddressSpace::default()),
+            AnyTypeEnum::FunctionType(_) => pointee_type
+                .into_function_type()
+                .ptr_type(AddressSpace::default()),
+            AnyTypeEnum::IntType(_) => pointee_type
+                .into_int_type()
+                .ptr_type(AddressSpace::default()),
+            AnyTypeEnum::PointerType(_) => pointee_type
+                .into_pointer_type()
+                .ptr_type(AddressSpace::default()),
+            AnyTypeEnum::StructType(_) => pointee_type
+                .into_struct_type()
+                .ptr_type(AddressSpace::default()),
+            AnyTypeEnum::VectorType(_) => pointee_type
+                .into_vector_type()
+                .ptr_type(AddressSpace::default()),
             AnyTypeEnum::VoidType(_) => panic!("Cannot point to void"),
         }
+    }
+
+    fn compile_ref_type(&self, ref_type: &RefType) -> inkwell::types::PointerType {
+        self.context
+            .opaque_struct_type(ref_type.ident().value())
+            .ptr_type(AddressSpace::default())
     }
 }

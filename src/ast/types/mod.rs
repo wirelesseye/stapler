@@ -1,18 +1,21 @@
 mod func;
 mod int;
 mod ptr;
+mod r#ref;
 
 use std::{fmt::Debug, any::Any};
 
 pub use func::*;
 pub use int::*;
 pub use ptr::*;
+pub use r#ref::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TypeKind {
     Int,
     Func,
     Ptr,
+    Ref,
 }
 
 pub trait TypeTrait: Debug {

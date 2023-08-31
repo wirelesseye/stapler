@@ -57,5 +57,5 @@ fn main() {
     }
 
     let codegen = Codegen::new();
-    codegen.compile_module(&module_ast, args.output.as_deref());
+    codegen.build_module(&module_ast, args.output.as_deref());
 }

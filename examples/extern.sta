@@ -9,4 +9,3 @@ extern {
 }
 
 printf("%s", msg)
-return 0

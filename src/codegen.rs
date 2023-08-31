@@ -43,6 +43,7 @@ impl<'ctx> Codegen<'ctx> {
         for stmt in ast.stmts() {
             self.build_stmt(&module, &builder, stmt);
         }
+        builder.build_return(Some(&i32_type.const_int(0, false)));
 
         if let Some(output) = output {
             module.print_to_file(format!("{}.ll", output)).unwrap();

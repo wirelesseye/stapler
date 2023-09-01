@@ -2,10 +2,11 @@ use crate::{
     ast::{
         arg::Arg,
         decl::Decl,
-        expr::{CallExpr, Expr, PostfixExpr},
+        expr::{CallExpr, Expr, IntLiteralExpr, PostfixExpr},
         ident::Ident,
         module_ast::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind},
+        types::{IntType, RefType},
     },
     decl_table::DeclTable,
 };
@@ -55,6 +56,21 @@ impl Checker {
     // ==================================================
 
     fn check_decl(&mut self, decl: &mut Decl) {
+        if decl.r#type.is_none() && decl.value.is_some() {
+            let value = decl.value.as_mut().unwrap();
+            match value.kind() {
+                crate::ast::expr::ExprKind::Call => todo!(),
+                crate::ast::expr::ExprKind::IntLiteral => decl.r#type = Some(IntType::I32.into()),
+                crate::ast::expr::ExprKind::Postfix => todo!(),
+                crate::ast::expr::ExprKind::StrLiteral => {
+                    decl.r#type = Some(
+                        RefType::new(PostfixExpr::new(Ident::new("String".to_string()), None))
+                            .into(),
+                    )
+                }
+            }
+        }
+
         let decl_id = self.def_table.push(&decl.name);
         decl.decl_id = Some(decl_id);
     }

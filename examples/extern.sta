@@ -2,7 +2,7 @@
  * multi-line comments
  */
 
-let msg: String = "Hello world!\n"
+let msg = "Hello world!\n"
 
 extern {
     let printf: (format: *i8, ...args: any[]) -> i32 // external function from C

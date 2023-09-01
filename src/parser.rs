@@ -6,7 +6,7 @@ use crate::{
         ident::Ident,
         module_ast::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, ReturnStmt},
-        types::{FuncType, IntType, Type, PtrType, RefType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
+        types::{FuncType, IntType, Type, PtrType, RefType, ArrayType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
     // ==================================================
 
     fn parse_type(&mut self) -> Type {
-        match self.curr_token.kind() {
+        let r#type = match self.curr_token.kind() {
             TokenKind::I8 => {
                 self.accept_token();
                 IntType::I8.into()
@@ -182,6 +182,14 @@ impl<'a> Parser<'a> {
                 "Unexpected token when parsing type: {}",
                 self.curr_token.spelling()
             ),
+        };
+
+        if self.curr_token.is_kind(TokenKind::LeftBracket) {
+            self.accept_token();
+            self.expect_token(TokenKind::RightBracket);
+            ArrayType::new(r#type).into()
+        } else {
+            r#type
         }
     }
 

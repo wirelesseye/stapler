@@ -5,7 +5,7 @@ use crate::char_reader::{CharReader, EOL};
 use crate::token::{Token, TokenKind, CursorPos};
 
 const PUNCTUATIONS: phf::Set<char> = phf_set! {
-    '=', ',', '.', '!', '(', ')', '{', '}', ':', ';', '+', '-', '<', '>', '*', '@', '"', '\''
+    '=', ',', '.', '!', '(', ')', '[', ']', '{', '}', ':', ';', '+', '-', '<', '>', '*', '@', '"', '\''
 };
 
 fn is_punctuation(c: char) -> bool {

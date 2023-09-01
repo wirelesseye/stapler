@@ -278,6 +278,7 @@ impl<'ctx> Codegen<'ctx> {
             TypeKind::Func => self.compile_func_type(r#type.cast::<FuncType>()).into(),
             TypeKind::Ptr => self.compile_ptr_type(r#type.cast::<PtrType>()).into(),
             TypeKind::Ref => self.compile_ref_type(r#type.cast::<RefType>()).into(),
+            TypeKind::Array => todo!()
         }
     }
 

@@ -246,7 +246,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         str_literial: &StrLiteralExpr,
     ) -> inkwell::values::GlobalValue {
-        builder.build_global_string_ptr(str_literial.value(), "")
+        builder.build_global_string_ptr(&str_literial.value, "")
     }
 
     fn build_int_literial_expr(
@@ -284,9 +284,13 @@ impl<'ctx> Codegen<'ctx> {
     fn compile_func_type(&self, func_type: &FuncType) -> inkwell::types::FunctionType {
         use inkwell::types::BasicMetadataTypeEnum;
 
-        let return_type = self.compile_type(func_type.return_type());
-        let param_types: Vec<BasicMetadataTypeEnum> = func_type
-            .params()
+        let return_type = self.compile_type(&func_type.return_type);
+        let params = if func_type.is_var_args {
+            &func_type.params[..func_type.params.len() - 1]
+        } else {
+            &func_type.params
+        };
+        let param_types: Vec<BasicMetadataTypeEnum> = params
             .iter()
             .map(|param| {
                 let llvm_type = self.compile_type(param.r#type());
@@ -309,29 +313,29 @@ impl<'ctx> Codegen<'ctx> {
         match return_type {
             AnyTypeEnum::ArrayType(_) => return_type
                 .into_array_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::FloatType(_) => return_type
                 .into_float_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::FunctionType(_) => return_type
                 .into_function_type()
                 .ptr_type(AddressSpace::default())
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::IntType(_) => return_type
                 .into_int_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::PointerType(_) => return_type
                 .into_pointer_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::StructType(_) => return_type
                 .into_struct_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::VectorType(_) => return_type
                 .into_vector_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
             AnyTypeEnum::VoidType(_) => return_type
                 .into_void_type()
-                .fn_type(&param_types, func_type.is_var_args()),
+                .fn_type(&param_types, func_type.is_var_args),
         }
     }
 

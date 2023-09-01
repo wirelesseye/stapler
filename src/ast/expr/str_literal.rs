@@ -3,16 +3,12 @@ use std::{fmt::Debug, any::Any};
 use super::{ExprKind, ExprTrait};
 
 pub struct StrLiteralExpr {
-    value: String,
+    pub value: String,
 }
 
 impl StrLiteralExpr {
     pub fn new(value: String) -> Self {
         Self { value }
-    }
-
-    pub fn value(&self) -> &str {
-        &self.value
     }
 }
 

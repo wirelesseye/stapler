@@ -236,6 +236,7 @@ impl<'a> Parser<'a> {
             self.accept_token();
             if self.curr_token.is_kind(TokenKind::Ellipsis) {
                 self.accept_token();
+                list.push(self.parse_param());
                 if self.curr_token.is_kind(TokenKind::RightParen) {
                     return (list, true);
                 } else {

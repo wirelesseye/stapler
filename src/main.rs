@@ -9,6 +9,7 @@ use crate::lexer::Lexer;
 use crate::token::TokenKind;
 
 mod ast;
+mod checker;
 mod char_reader;
 mod codegen;
 mod lexer;

@@ -5,16 +5,12 @@ use crate::{ast::decl::Decl, utils::join_list};
 use super::{StmtKind, StmtTrait};
 
 pub struct DeclStmt {
-    decls: Vec<Decl>,
+    pub decls: Vec<Decl>,
 }
 
 impl DeclStmt {
     pub fn new(decls: Vec<Decl>) -> Self {
         Self { decls }
-    }
-
-    pub fn decls(&self) -> &[Decl] {
-        &self.decls
     }
 }
 

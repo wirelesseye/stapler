@@ -5,21 +5,13 @@ use crate::utils::join_list;
 use super::stmt::Stmt;
 
 pub struct ModuleAST {
-    name: String,
-    stmts: Vec<Stmt>,
+    pub name: String,
+    pub stmts: Vec<Stmt>,
 }
 
 impl ModuleAST {
     pub fn new(name: String, stmts: Vec<Stmt>) -> Self {
         Self { name, stmts }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn stmts(&self) -> &[Stmt] {
-        &self.stmts
     }
 }
 

@@ -3,16 +3,12 @@ use std::fmt::Debug;
 use super::expr::Expr;
 
 pub struct Arg {
-    expr: Expr,
+    pub expr: Expr,
 }
 
 impl Arg {
     pub fn new(expr: Expr) -> Self {
         Self { expr }
-    }
-
-    pub fn expr(&self) -> &Expr {
-        &self.expr
     }
 }
 

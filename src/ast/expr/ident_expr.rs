@@ -5,7 +5,7 @@ use crate::ast::ident::Ident;
 use super::{ExprTrait, ExprKind};
 
 pub struct IdentExpr {
-    ident: Ident
+    pub ident: Ident
 }
 
 impl IdentExpr {
@@ -13,10 +13,6 @@ impl IdentExpr {
         Self {
             ident
         }
-    }
-
-    pub fn ident(&self) -> &Ident {
-        &self.ident
     }
 }
 

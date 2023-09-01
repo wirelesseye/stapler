@@ -31,7 +31,7 @@ impl<'ctx> Codegen<'ctx> {
     }
 
     pub fn build_module(&'ctx self, ast: &ModuleAST, output: Option<&str>) {
-        let module = self.context.create_module(ast.name());
+        let module = self.context.create_module(&ast.name);
 
         let i32_type = self.context.i32_type();
         let main_fn_type = i32_type.fn_type(&[], false);
@@ -40,7 +40,7 @@ impl<'ctx> Codegen<'ctx> {
 
         let builder = self.context.create_builder();
         builder.position_at_end(basic_block);
-        for stmt in ast.stmts() {
+        for stmt in &ast.stmts {
             self.build_stmt(&module, &builder, stmt);
         }
         builder.build_return(Some(&i32_type.const_int(0, false)));
@@ -91,7 +91,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         extern_stmt: &ExternStmt,
     ) {
-        for decl_stmt in extern_stmt.decl_stmts() {
+        for decl_stmt in &extern_stmt.decl_stmts {
             self.build_decl_stmt(module, builder, decl_stmt)
         }
     }
@@ -102,7 +102,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         decl_stmt: &DeclStmt,
     ) {
-        for decl in decl_stmt.decls() {
+        for decl in &decl_stmt.decls {
             self.build_decl(module, builder, decl);
         }
     }
@@ -113,7 +113,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         expr_stmt: &ExprStmt,
     ) {
-        self.build_expr(module, builder, expr_stmt.expr());
+        self.build_expr(module, builder, &expr_stmt.expr);
     }
 
     fn build_return_stmt(
@@ -122,7 +122,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         return_stmt: &ReturnStmt,
     ) {
-        if let Some(expr) = return_stmt.expr() {
+        if let Some(expr) = &return_stmt.expr {
             let llvm_value = self.build_expr(module, builder, expr);
             match llvm_value {
                 AnyValueEnum::ArrayValue(_) => {
@@ -156,14 +156,14 @@ impl<'ctx> Codegen<'ctx> {
     // ==================================================
 
     fn build_decl(&'ctx self, module: &Module<'ctx>, builder: &Builder<'ctx>, decl: &Decl) {
-        if decl.r#type().unwrap().kind() == TypeKind::Func {
+        if decl.r#type.as_ref().unwrap().kind() == TypeKind::Func {
             self.build_func_decl(module, builder, decl);
             return;
         }
 
-        if let Some(expr) = decl.value() {
-            let name = decl.ident().value().to_string();
-            let llvm_type = self.compile_type(decl.r#type().unwrap());
+        if let Some(expr) = &decl.value {
+            let name = decl.ident.value.to_string();
+            let llvm_type = self.compile_type(decl.r#type.as_ref().unwrap());
             let llvm_value = self.build_expr(module, builder, expr);
             self.decls.borrow_mut().push((name, llvm_type, llvm_value));
         }
@@ -175,8 +175,8 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder,
         decl: &Decl,
     ) -> inkwell::values::FunctionValue {
-        let name = decl.ident().value();
-        let func_type = decl.r#type().unwrap().cast::<FuncType>();
+        let name = &decl.ident.value;
+        let func_type = decl.r#type.as_ref().unwrap().cast::<FuncType>();
         let llvm_func_type = self.compile_func_type(func_type);
 
         let val = module.add_function(name, llvm_func_type, None);
@@ -216,13 +216,13 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         call_expr: &CallExpr,
     ) -> inkwell::values::CallSiteValue {
-        let func_name = call_expr.ident().value();
+        let func_name = &call_expr.ident.value;
         let function = module.get_function(func_name).unwrap();
         let args: Vec<inkwell::values::BasicMetadataValueEnum> = call_expr
-            .args()
+            .args
             .iter()
             .map(|arg| {
-                let llvm_value = self.build_expr(module, builder, arg.expr());
+                let llvm_value = self.build_expr(module, builder, &arg.expr);
                 match llvm_value {
                     AnyValueEnum::ArrayValue(_) => todo!(),
                     AnyValueEnum::IntValue(_) => llvm_value.into_int_value().into(),
@@ -257,7 +257,7 @@ impl<'ctx> Codegen<'ctx> {
     ) -> inkwell::values::IntValue {
         self.context
             .i32_type()
-            .const_int(str::parse::<u64>(int_literial.value()).unwrap(), false)
+            .const_int(str::parse::<u64>(&int_literial.value).unwrap(), false)
     }
 
     fn build_ident_expr(
@@ -266,7 +266,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         ident_expr: &IdentExpr,
     ) -> AnyValueEnum {
-        let (t, v) = self.retrieve_decl(ident_expr.ident().value()).unwrap();
+        let (t, v) = self.retrieve_decl(&ident_expr.ident.value).unwrap();
         return v;
     }
 
@@ -348,7 +348,7 @@ impl<'ctx> Codegen<'ctx> {
     }
 
     fn compile_ptr_type(&self, ptr_type: &PtrType) -> inkwell::types::PointerType {
-        let pointee_type = self.compile_type(ptr_type.pointee());
+        let pointee_type = self.compile_type(&ptr_type.pointee);
         match pointee_type {
             AnyTypeEnum::ArrayType(_) => pointee_type
                 .into_array_type()
@@ -377,7 +377,7 @@ impl<'ctx> Codegen<'ctx> {
 
     fn compile_ref_type(&self, ref_type: &RefType) -> inkwell::types::PointerType {
         self.context
-            .opaque_struct_type(ref_type.ident().value())
+            .opaque_struct_type(&ref_type.ident.value)
             .ptr_type(AddressSpace::default())
     }
 }

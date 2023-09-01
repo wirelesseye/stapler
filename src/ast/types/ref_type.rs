@@ -5,7 +5,7 @@ use crate::ast::ident::Ident;
 use super::{TypeTrait, TypeKind};
 
 pub struct RefType {
-    ident: Ident
+    pub ident: Ident
 }
 
 impl RefType {
@@ -13,10 +13,6 @@ impl RefType {
         Self {
             ident
         }
-    }
-    
-    pub fn ident(&self) -> &Ident {
-        &self.ident
     }
 }
 
@@ -32,6 +28,6 @@ impl TypeTrait for RefType {
 
 impl Debug for RefType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.ident())
+        write!(f, "{:?}", self.ident)
     }
 }

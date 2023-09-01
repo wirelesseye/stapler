@@ -8,21 +8,13 @@ use crate::{
 use super::{ExprKind, ExprTrait};
 
 pub struct CallExpr {
-    ident: Ident,
-    args: Vec<Arg>,
+    pub ident: Ident,
+    pub args: Vec<Arg>,
 }
 
 impl CallExpr {
     pub fn new(ident: Ident, args: Vec<Arg>) -> Self {
         Self { ident, args }
-    }
-
-    pub fn ident(&self) -> &Ident {
-        &self.ident
-    }
-
-    pub fn args(&self) -> &[Arg] {
-        &self.args
     }
 }
 

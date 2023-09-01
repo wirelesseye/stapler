@@ -5,7 +5,7 @@ use crate::ast::expr::Expr;
 use super::{StmtTrait, StmtKind};
 
 pub struct ExprStmt {
-    expr: Expr
+    pub expr: Expr
 }
 
 impl ExprStmt {
@@ -13,10 +13,6 @@ impl ExprStmt {
         Self {
             expr
         }
-    }
-
-    pub fn expr(&self) -> &Expr {
-        &self.expr
     }
 }
 

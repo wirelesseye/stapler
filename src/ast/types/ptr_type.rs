@@ -3,16 +3,12 @@ use std::{fmt::Debug, any::Any};
 use super::{Type, TypeKind, TypeTrait};
 
 pub struct PtrType {
-    pointee: Type,
+    pub pointee: Type,
 }
 
 impl PtrType {
     pub fn new(pointee: Type) -> Self {
         Self { pointee }
-    }
-
-    pub fn pointee(&self) -> &Type {
-        &self.pointee
     }
 }
 

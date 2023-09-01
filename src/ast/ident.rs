@@ -1,16 +1,12 @@
 use std::fmt::Debug;
 
 pub struct Ident {
-    value: String,
+    pub value: String,
 }
 
 impl Ident {
     pub fn new(value: String) -> Self {
         Self { value }
-    }
-
-    pub fn value(&self) -> &str {
-        &self.value
     }
 }
 

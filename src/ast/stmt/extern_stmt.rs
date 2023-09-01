@@ -5,7 +5,7 @@ use crate::utils::join_list;
 use super::{decl_stmt::DeclStmt, StmtKind, StmtTrait};
 
 pub struct ExternStmt {
-    decl_stmts: Vec<DeclStmt>,
+    pub decl_stmts: Vec<DeclStmt>,
 }
 
 impl ExternStmt {
@@ -13,10 +13,6 @@ impl ExternStmt {
         Self {
             decl_stmts
         }
-    }
-
-    pub fn decl_stmts(&self) -> &[DeclStmt] {
-        &self.decl_stmts
     }
 }
 

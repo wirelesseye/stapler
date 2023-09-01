@@ -162,7 +162,7 @@ impl<'ctx> Codegen<'ctx> {
         }
 
         if let Some(expr) = &decl.value {
-            let name = decl.ident.value.to_string();
+            let name = decl.name.to_owned();
             let llvm_type = self.compile_type(decl.r#type.as_ref().unwrap());
             let llvm_value = self.build_expr(module, builder, expr);
             self.decls.borrow_mut().push((name, llvm_type, llvm_value));
@@ -175,7 +175,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder,
         decl: &Decl,
     ) -> inkwell::values::FunctionValue {
-        let name = &decl.ident.value;
+        let name = &decl.name;
         let func_type = decl.r#type.as_ref().unwrap().cast::<FuncType>();
         let llvm_func_type = self.compile_func_type(func_type);
 

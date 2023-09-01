@@ -128,9 +128,9 @@ impl<'a> Parser<'a> {
         if self.curr_token.is_kind(TokenKind::Assign) {
             self.accept_token();
             let value = self.parse_expr();
-            Decl::new(ident, r#type, Some(value))
+            Decl::new(ident.value, r#type, Some(value))
         } else {
-            Decl::new(ident, r#type, None)
+            Decl::new(ident.value, r#type, None)
         }
     }
 

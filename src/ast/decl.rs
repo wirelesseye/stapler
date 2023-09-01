@@ -1,17 +1,17 @@
 use std::fmt::{Debug, Formatter};
 
-use super::{ident::Ident, types::Type, expr::Expr};
+use super::{expr::Expr, types::Type};
 
 pub struct Decl {
-    pub ident: Ident,
+    pub name: String,
     pub r#type: Option<Type>,
     pub value: Option<Expr>,
 }
 
 impl Decl {
-    pub fn new(ident: Ident, r#type: Option<Type>, value: Option<Expr>) -> Self {
+    pub fn new(name: String, r#type: Option<Type>, value: Option<Expr>) -> Self {
         Self {
-            ident,
+            name,
             r#type,
             value,
         }
@@ -20,7 +20,7 @@ impl Decl {
 
 impl Debug for Decl {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "let {:?}", self.ident)?;
+        write!(f, "let {}", self.name)?;
         if let Some(r#type) = &self.r#type {
             write!(f, ": {:?}", r#type)?;
         }

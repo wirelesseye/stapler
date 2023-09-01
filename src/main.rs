@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Seek;
 
+use checker::Checker;
 use clap::Parser as ClapParser;
 use codegen::Codegen;
 use parser::Parser;
@@ -14,6 +15,7 @@ mod char_reader;
 mod codegen;
 mod lexer;
 mod parser;
+mod decl_table;
 mod token;
 mod utils;
 
@@ -52,7 +54,10 @@ fn main() {
     }
 
     let mut parser = Parser::new(&args.source, &file);
-    let module_ast = parser.parse();
+    let mut module_ast = parser.parse();
+
+    let mut checker = Checker::new();
+    checker.check(&mut module_ast);
 
     if args.ast {
         println!("{:?}\n", module_ast);

@@ -1,16 +1,16 @@
 use std::{any::Any, fmt::Debug};
 
-use crate::ast::r#ref::Ref;
+use crate::ast::expr::PostfixExpr;
 
 use super::{TypeKind, TypeTrait};
 
 pub struct RefType {
-    pub r#ref: Ref,
+    pub postfix_expr: PostfixExpr,
 }
 
 impl RefType {
-    pub fn new(r#ref: Ref) -> Self {
-        Self { r#ref }
+    pub fn new(postfix_expr: PostfixExpr) -> Self {
+        Self { postfix_expr }
     }
 }
 
@@ -26,6 +26,6 @@ impl TypeTrait for RefType {
 
 impl Debug for RefType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.r#ref)
+        write!(f, "{:?}", self.postfix_expr)
     }
 }

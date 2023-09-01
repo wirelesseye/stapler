@@ -4,11 +4,11 @@ use crate::{
     ast::{
         arg::Arg,
         decl::Decl,
-        expr::{CallExpr, Expr, RefExpr, IntLiteralExpr, StrLiteralExpr},
+        expr::{CallExpr, Expr, IntLiteralExpr, StrLiteralExpr, PostfixExpr},
         module_ast::ModuleAST,
         param::Param,
         stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt},
-        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type}, r#ref::Ref,
+        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type}, ident::Ident,
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -119,7 +119,7 @@ impl<'a> Parser<'a> {
     // ==================================================
 
     fn parse_decl(&mut self) -> Decl {
-        let name = self.parse_ident();
+        let ident = self.parse_ident();
         let mut r#type = None;
 
         if self.curr_token.is_kind(TokenKind::Colon) {
@@ -130,21 +130,21 @@ impl<'a> Parser<'a> {
         if self.curr_token.is_kind(TokenKind::Assign) {
             self.accept_token();
             let value = self.parse_expr();
-            Decl::new(name, r#type, Some(value))
+            Decl::new(ident.name, r#type, Some(value))
         } else {
-            Decl::new(name, r#type, None)
+            Decl::new(ident.name, r#type, None)
         }
     }
 
     fn parse_expr(&mut self) -> Expr {
         match self.curr_token.kind() {
             TokenKind::Identifier => {
-                let r#ref = self.parse_ref();
+                let postfix_expr = self.parse_postfix_expr();
                 if self.curr_token.kind() == TokenKind::LeftParen {
                     let arg_list = self.parse_arg_list();
-                    CallExpr::new(r#ref, arg_list).into()
+                    CallExpr::new(postfix_expr, arg_list).into()
                 } else {
-                    RefExpr::new(r#ref).into()
+                    postfix_expr.into()
                 }
             }
             TokenKind::IntLiteral => {
@@ -160,21 +160,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // ==================================================
-
-    fn parse_ident(&mut self) -> String {
-        let token = self.expect_token(TokenKind::Identifier);
-        token.spelling().to_owned()
-    }
-
-    fn parse_ref(&mut self) -> Ref {
-        let name = self.parse_ident();
-        let mut child: Option<Ref> = None;
+    fn parse_postfix_expr(&mut self) -> PostfixExpr {
+        let ident = self.parse_ident();
+        let mut child: Option<PostfixExpr> = None;
         if self.curr_token.is_kind(TokenKind::Dot) {
             self.accept_token();
-            child = Some(self.parse_ref());
+            child = Some(self.parse_postfix_expr());
         }
-        Ref::new(name, child)
+        PostfixExpr::new(ident, child)
+    }
+
+    // ==================================================
+
+    fn parse_ident(&mut self) -> Ident {
+        let token = self.expect_token(TokenKind::Identifier);
+        Ident::new(token.spelling().to_owned())
     }
 
     // ==================================================
@@ -225,8 +225,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ref_type(&mut self) -> RefType {
-        let r#ref = self.parse_ref();
-        RefType::new(r#ref)
+        let postfix_expr = self.parse_postfix_expr();
+        RefType::new(postfix_expr)
     }
 
     // ==================================================
@@ -277,10 +277,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_param(&mut self) -> Param {
-        let name = self.parse_ident();
+        let ident = self.parse_ident();
         self.expect_token(TokenKind::Colon);
         let r#type = self.parse_type();
-        Param::new(name, r#type)
+        Param::new(ident.name, r#type)
     }
 
     fn parse_arg_list(&mut self) -> Vec<Arg> {

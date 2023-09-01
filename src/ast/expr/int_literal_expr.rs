@@ -22,6 +22,10 @@ impl ExprTrait for IntLiteralExpr {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl Debug for IntLiteralExpr {

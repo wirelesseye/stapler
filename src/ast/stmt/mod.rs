@@ -21,6 +21,8 @@ pub trait StmtTrait : Debug {
     fn kind(&self) -> StmtKind;
 
     fn as_any(&self) -> &dyn Any;
+
+    fn as_mut_any(&mut self) -> &mut dyn Any;
 }
 
 pub struct Stmt {
@@ -34,6 +36,10 @@ impl Stmt {
 
     pub fn cast<T>(&self) -> &T where T: StmtTrait + 'static {
         self.inner.as_any().downcast_ref::<T>().unwrap()
+    }
+
+    pub fn cast_mut<T>(&mut self) -> &mut T where T: StmtTrait + 'static {
+        self.inner.as_mut_any().downcast_mut::<T>().unwrap()
     }
 }
 

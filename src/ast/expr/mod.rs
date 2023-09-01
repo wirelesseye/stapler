@@ -1,26 +1,28 @@
 mod call_expr;
-mod ref_expr;
 mod int_literal_expr;
+mod postfix_expr;
 mod str_literal_expr;
 
-use std::{fmt::Debug, any::Any};
+use std::{any::Any, fmt::Debug};
 
 pub use call_expr::*;
-pub use ref_expr::*;
 pub use int_literal_expr::*;
+pub use postfix_expr::*;
 pub use str_literal_expr::*;
 
 pub enum ExprKind {
     Call,
     IntLiteral,
+    Postfix,
     StrLiteral,
-    Ref,
 }
 
-pub trait ExprTrait : Debug {
+pub trait ExprTrait: Debug {
     fn kind(&self) -> ExprKind;
 
     fn as_any(&self) -> &dyn Any;
+
+    fn as_mut_any(&mut self) -> &mut dyn Any;
 }
 
 pub struct Expr {
@@ -32,8 +34,18 @@ impl Expr {
         self.inner.kind()
     }
 
-    pub fn cast<T>(&self) -> &T where T: ExprTrait + 'static {
+    pub fn cast<T>(&self) -> &T
+    where
+        T: ExprTrait + 'static,
+    {
         self.inner.as_any().downcast_ref::<T>().unwrap()
+    }
+
+    pub fn cast_mut<T>(&mut self) -> &mut T
+    where
+        T: ExprTrait + 'static,
+    {
+        self.inner.as_mut_any().downcast_mut::<T>().unwrap()
     }
 }
 

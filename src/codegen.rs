@@ -1,4 +1,4 @@
-use std::{cell::RefCell, process::Command};
+use std::{cell::RefCell, collections::HashMap, process::Command};
 
 use inkwell::{
     builder::Builder,
@@ -11,7 +11,7 @@ use inkwell::{
 
 use crate::ast::{
     decl::Decl,
-    expr::{CallExpr, Expr, ExprKind, IntLiteralExpr, RefExpr, StrLiteralExpr},
+    expr::{CallExpr, Expr, ExprKind, IntLiteralExpr, PostfixExpr, StrLiteralExpr},
     module_ast::ModuleAST,
     stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
     types::{FuncType, IntType, PtrType, RefType, Type, TypeKind},
@@ -19,14 +19,14 @@ use crate::ast::{
 
 pub struct Codegen<'ctx> {
     context: Context,
-    decls: RefCell<Vec<(String, AnyTypeEnum<'ctx>, AnyValueEnum<'ctx>)>>,
+    decl_map: RefCell<HashMap<u64, (AnyTypeEnum<'ctx>, AnyValueEnum<'ctx>)>>,
 }
 
 impl<'ctx> Codegen<'ctx> {
     pub fn new() -> Self {
         Self {
             context: Context::create(),
-            decls: RefCell::new(Vec::new()),
+            decl_map: RefCell::new(HashMap::new()),
         }
     }
 
@@ -65,13 +65,22 @@ impl<'ctx> Codegen<'ctx> {
         }
     }
 
-    fn retrieve_decl(&self, name: &str) -> Option<(AnyTypeEnum, AnyValueEnum)> {
-        for (n, t, v) in self.decls.borrow().iter().rev() {
-            if n == name {
-                return Some((t.clone(), v.clone()));
-            }
-        }
-        None
+    // ==================================================
+
+    fn set_value(
+        &self,
+        decl_id: u64,
+        llvm_type: AnyTypeEnum<'ctx>,
+        llvm_value: AnyValueEnum<'ctx>,
+    ) {
+        self.decl_map
+            .borrow_mut()
+            .insert(decl_id, (llvm_type, llvm_value));
+    }
+
+    fn get_value(&self, decl_id: u64) -> (AnyTypeEnum, AnyValueEnum) {
+        let decl_map = self.decl_map.borrow();
+        decl_map.get(&decl_id).unwrap().clone()
     }
 
     // ==================================================
@@ -162,10 +171,9 @@ impl<'ctx> Codegen<'ctx> {
         }
 
         if let Some(expr) = &decl.value {
-            let name = decl.name.to_owned();
             let llvm_type = self.compile_type(decl.r#type.as_ref().unwrap());
             let llvm_value = self.build_expr(module, builder, expr);
-            self.decls.borrow_mut().push((name, llvm_type, llvm_value));
+            self.set_value(decl.decl_id.unwrap(), llvm_type, llvm_value);
         }
     }
 
@@ -176,16 +184,16 @@ impl<'ctx> Codegen<'ctx> {
         decl: &Decl,
     ) -> inkwell::values::FunctionValue {
         let name = &decl.name;
-        let func_type = decl.r#type.as_ref().unwrap().cast::<FuncType>();
-        let llvm_func_type = self.compile_func_type(func_type);
+        let llvm_func_type =
+            self.compile_func_type(decl.r#type.as_ref().unwrap().cast::<FuncType>());
+        let llvm_func_value = module.add_function(name, llvm_func_type, None);
 
-        let val = module.add_function(name, llvm_func_type, None);
-        self.decls.borrow_mut().push((
-            name.to_string(),
+        self.set_value(
+            decl.decl_id.unwrap(),
             llvm_func_type.into(),
-            val.as_any_value_enum(),
-        ));
-        return val;
+            llvm_func_value.into(),
+        );
+        return llvm_func_value;
     }
 
     // ==================================================
@@ -206,7 +214,9 @@ impl<'ctx> Codegen<'ctx> {
             ExprKind::StrLiteral => self
                 .build_str_literial_expr(module, builder, expr.cast::<StrLiteralExpr>())
                 .as_any_value_enum(),
-            ExprKind::Ref => self.build_ref_expr(module, builder, expr.cast::<RefExpr>()),
+            ExprKind::Postfix => {
+                self.build_postfix_expr(module, builder, expr.cast::<PostfixExpr>())
+            }
         }
     }
 
@@ -216,8 +226,8 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         call_expr: &CallExpr,
     ) -> inkwell::values::CallSiteValue {
-        let func_name = &call_expr.r#ref.name;
-        let function = module.get_function(func_name).unwrap();
+        let (_t, v) = self.get_value(call_expr.postfix_expr.ident.decl_id.unwrap());
+        let function = v.into_function_value();
         let args: Vec<inkwell::values::BasicMetadataValueEnum> = call_expr
             .args
             .iter()
@@ -260,14 +270,14 @@ impl<'ctx> Codegen<'ctx> {
             .const_int(str::parse::<u64>(&int_literial.value).unwrap(), false)
     }
 
-    fn build_ref_expr(
+    fn build_postfix_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
-        ref_expr: &RefExpr,
+        postfix_expr: &PostfixExpr,
     ) -> AnyValueEnum {
-        let (t, v) = self.retrieve_decl(&ref_expr.r#ref.name).unwrap();
-        return v;
+        let (_t, v) = self.get_value(postfix_expr.ident.decl_id.unwrap());
+        return v.to_owned();
     }
 
     // ==================================================
@@ -378,7 +388,7 @@ impl<'ctx> Codegen<'ctx> {
 
     fn compile_ref_type(&self, ref_type: &RefType) -> inkwell::types::PointerType {
         self.context
-            .opaque_struct_type(&ref_type.r#ref.name)
+            .opaque_struct_type(&ref_type.postfix_expr.ident.name)
             .ptr_type(AddressSpace::default())
     }
 }

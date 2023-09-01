@@ -48,6 +48,7 @@ fn main() {
         }
         println!();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        return;
     }
 
     let mut parser = Parser::new(&args.source, &file);
@@ -55,6 +56,7 @@ fn main() {
 
     if args.ast {
         println!("{:?}\n", module_ast);
+        return;
     }
 
     let codegen = Codegen::new();

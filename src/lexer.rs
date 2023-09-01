@@ -335,6 +335,7 @@ impl<'a> Lexer<'a> {
     fn extract_keyword(&self) -> Option<TokenKind> {
         match self.spelling.as_str() {
             "extern" => Some(TokenKind::Extern),
+            "export" => Some(TokenKind::Export),
             "import" => Some(TokenKind::Import),
             "let" => Some(TokenKind::Let),
             "mut" => Some(TokenKind::Mut),

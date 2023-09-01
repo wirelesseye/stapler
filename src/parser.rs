@@ -68,7 +68,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> Stmt {
         match self.curr_token.kind() {
-            TokenKind::Let => self.parse_decl_stmt().into(),
+            TokenKind::Let | TokenKind::Export => self.parse_decl_stmt().into(),
             TokenKind::Extern => self.parse_extern_stmt().into(),
             TokenKind::Return => self.parse_return_stmt().into(),
             _ => ExprStmt::new(self.parse_expr()).into(),
@@ -89,6 +89,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_decl_stmt(&mut self) -> DeclStmt {
+        let mut is_export = false;
+        if self.curr_token.is_kind(TokenKind::Export) {
+            is_export = true;
+            self.accept_token();
+        }
+
         self.expect_token(TokenKind::Let);
 
         let mut decls: Vec<Decl> = Vec::new();
@@ -99,7 +105,7 @@ impl<'a> Parser<'a> {
             decls.push(self.parse_decl());
         }
 
-        DeclStmt::new(decls)
+        DeclStmt::new(decls, is_export)
     }
 
     fn parse_return_stmt(&mut self) -> ReturnStmt {

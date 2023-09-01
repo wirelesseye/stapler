@@ -6,11 +6,12 @@ use super::{StmtKind, StmtTrait};
 
 pub struct DeclStmt {
     pub decls: Vec<Decl>,
+    pub is_export: bool,
 }
 
 impl DeclStmt {
-    pub fn new(decls: Vec<Decl>) -> Self {
-        Self { decls }
+    pub fn new(decls: Vec<Decl>, is_export: bool) -> Self {
+        Self { decls, is_export }
     }
 }
 
@@ -26,6 +27,10 @@ impl StmtTrait for DeclStmt {
 
 impl Debug for DeclStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", join_list(&self.decls, "\n"))
+        if self.is_export {
+            write!(f, "export ")?;
+        }
+        write!(f, "{}", join_list(&self.decls, "\n"))?;
+        Ok(())
     }
 }

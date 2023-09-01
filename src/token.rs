@@ -39,6 +39,7 @@ impl Token {
 pub enum TokenKind {
     // Keywords
     Extern,
+    Export,
     Import,
     Let,
     Mut,

@@ -11,7 +11,7 @@ use inkwell::{
 
 use crate::ast::{
     decl::Decl,
-    expr::{CallExpr, Expr, ExprKind, IntLiteralExpr, PostfixExpr, StrLiteralExpr},
+    expr::{CallExpr, Expr, ExprKind, IdentExpr, IntLiteralExpr, StrLiteralExpr},
     module_ast::ModuleAST,
     stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
     types::{FuncType, IntType, PtrType, RefType, Type, TypeKind},
@@ -214,9 +214,8 @@ impl<'ctx> Codegen<'ctx> {
             ExprKind::StrLiteral => self
                 .build_str_literial_expr(module, builder, expr.cast::<StrLiteralExpr>())
                 .as_any_value_enum(),
-            ExprKind::Postfix => {
-                self.build_postfix_expr(module, builder, expr.cast::<PostfixExpr>())
-            }
+            ExprKind::Ident => self.build_ident_expr(module, builder, expr.cast::<IdentExpr>()),
+            ExprKind::Member => todo!(),
         }
     }
 
@@ -226,8 +225,8 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         call_expr: &CallExpr,
     ) -> inkwell::values::CallSiteValue {
-        let (_t, v) = self.get_value(call_expr.postfix_expr.ident.decl_id.unwrap());
-        let function = v.into_function_value();
+        let value = self.build_expr(module, builder, &call_expr.postfix_expr);
+        let function = value.into_function_value();
         let args: Vec<inkwell::values::BasicMetadataValueEnum> = call_expr
             .args
             .iter()
@@ -270,14 +269,14 @@ impl<'ctx> Codegen<'ctx> {
             .const_int(str::parse::<u64>(&int_literial.value).unwrap(), false)
     }
 
-    fn build_postfix_expr(
+    fn build_ident_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
-        postfix_expr: &PostfixExpr,
+        ident_expr: &IdentExpr,
     ) -> AnyValueEnum {
-        let (_t, v) = self.get_value(postfix_expr.ident.decl_id.unwrap());
-        return v.to_owned();
+        let (_t, v) = self.get_value(ident_expr.ident.decl_id.unwrap());
+        v
     }
 
     // ==================================================
@@ -387,8 +386,17 @@ impl<'ctx> Codegen<'ctx> {
     }
 
     fn compile_ref_type(&self, ref_type: &RefType) -> inkwell::types::PointerType {
-        self.context
-            .opaque_struct_type(&ref_type.postfix_expr.ident.name)
-            .ptr_type(AddressSpace::default())
+        match ref_type.expr.kind() {
+            ExprKind::Call => todo!(),
+            ExprKind::Ident => {
+                let ident = &ref_type.expr.cast::<IdentExpr>().ident;
+                self.context
+                    .opaque_struct_type(&ident.name)
+                    .ptr_type(AddressSpace::default())
+            }
+            ExprKind::IntLiteral => todo!(),
+            ExprKind::StrLiteral => todo!(),
+            ExprKind::Member => todo!(),
+        }
     }
 }

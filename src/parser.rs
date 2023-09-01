@@ -4,11 +4,12 @@ use crate::{
     ast::{
         arg::Arg,
         decl::Decl,
-        expr::{CallExpr, Expr, IntLiteralExpr, StrLiteralExpr, PostfixExpr},
+        expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, MemberExpr, StrLiteralExpr},
+        ident::Ident,
         module_ast::ModuleAST,
         param::Param,
         stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt},
-        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type}, ident::Ident,
+        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type},
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -136,17 +137,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr(&mut self) -> Expr {
+    fn parse_primary_expr(&mut self) -> Expr {
         match self.curr_token.kind() {
-            TokenKind::Identifier => {
-                let postfix_expr = self.parse_postfix_expr();
-                if self.curr_token.kind() == TokenKind::LeftParen {
-                    let arg_list = self.parse_arg_list();
-                    CallExpr::new(postfix_expr, arg_list).into()
-                } else {
-                    postfix_expr.into()
-                }
-            }
+            TokenKind::Identifier => self.parse_ident_expr().into(),
             TokenKind::IntLiteral => {
                 let token = self.accept_token();
                 IntLiteralExpr::new(token.spelling().to_string()).into()
@@ -160,14 +153,34 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_postfix_expr(&mut self) -> PostfixExpr {
-        let ident = self.parse_ident();
-        let mut child: Option<PostfixExpr> = None;
-        if self.curr_token.is_kind(TokenKind::Dot) {
-            self.accept_token();
-            child = Some(self.parse_postfix_expr());
+    fn parse_expr(&mut self) -> Expr {
+        let mut expr = self.parse_primary_expr();
+
+        loop {
+            match self.curr_token.kind() {
+                TokenKind::LeftParen => expr = self.parse_call_expr(expr).into(),
+                TokenKind::Dot => expr = self.parse_member_expr(expr).into(),
+                _ => break,
+            }
         }
-        PostfixExpr::new(ident, child)
+
+        expr
+    }
+
+    fn parse_call_expr(&mut self, postfix_expr: Expr) -> CallExpr {
+        let arg_list = self.parse_arg_list();
+        CallExpr::new(postfix_expr, arg_list)
+    }
+
+    fn parse_member_expr(&mut self, postfix_expr: Expr) -> MemberExpr {
+        self.expect_token(TokenKind::Dot);
+        let member = self.parse_ident();
+        MemberExpr::new(postfix_expr, member)
+    }
+
+    fn parse_ident_expr(&mut self) -> IdentExpr {
+        let ident = self.parse_ident();
+        IdentExpr::new(ident)
     }
 
     // ==================================================
@@ -225,8 +238,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ref_type(&mut self) -> RefType {
-        let postfix_expr = self.parse_postfix_expr();
-        RefType::new(postfix_expr)
+        let expr = self.parse_expr();
+        RefType::new(expr)
     }
 
     // ==================================================

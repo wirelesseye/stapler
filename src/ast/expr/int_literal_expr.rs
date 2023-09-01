@@ -1,15 +1,20 @@
-use std::{fmt::Debug, any::Any};
+use std::{any::Any, fmt::Debug};
 
-use super::{ExprTrait, ExprKind};
+use crate::ast::types::{Type, IntType};
 
+use super::{ExprKind, ExprTrait};
+
+#[derive(Clone)]
 pub struct IntLiteralExpr {
-    pub value: String
+    pub value: String,
+    pub r#type: Option<Type>,
 }
 
 impl IntLiteralExpr {
     pub fn new(value: String) -> Self {
         Self {
-            value
+            value,
+            r#type: Some(IntType::I32.into()),
         }
     }
 }
@@ -25,6 +30,14 @@ impl ExprTrait for IntLiteralExpr {
 
     fn as_mut_any(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn clone_box(&self) -> Box<dyn ExprTrait> {
+        Box::new(self.clone())
+    }
+
+    fn r#type(&self) -> &Option<Type> {
+        &self.r#type
     }
 }
 

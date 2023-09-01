@@ -2,7 +2,7 @@ use crate::{
     ast::{
         arg::Arg,
         decl::Decl,
-        expr::{CallExpr, Expr, IntLiteralExpr, PostfixExpr},
+        expr::{CallExpr, Expr, ExprKind, IdentExpr},
         ident::Ident,
         module_ast::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind},
@@ -49,25 +49,18 @@ impl Checker {
         }
     }
 
-    fn check_expr_stmt(&self, expr_stmt: &mut ExprStmt) {
+    fn check_expr_stmt(&mut self, expr_stmt: &mut ExprStmt) {
         self.check_expr(&mut expr_stmt.expr);
     }
 
     // ==================================================
 
     fn check_decl(&mut self, decl: &mut Decl) {
-        if decl.r#type.is_none() && decl.value.is_some() {
-            let value = decl.value.as_mut().unwrap();
-            match value.kind() {
-                crate::ast::expr::ExprKind::Call => todo!(),
-                crate::ast::expr::ExprKind::IntLiteral => decl.r#type = Some(IntType::I32.into()),
-                crate::ast::expr::ExprKind::Postfix => todo!(),
-                crate::ast::expr::ExprKind::StrLiteral => {
-                    decl.r#type = Some(
-                        RefType::new(PostfixExpr::new(Ident::new("String".to_string()), None))
-                            .into(),
-                    )
-                }
+        if let Some(value) = &mut decl.value {
+            self.check_expr(value);
+            
+            if decl.r#type.is_none() && value.r#type().is_some() {
+                decl.r#type = value.r#type().clone();
             }
         }
 
@@ -77,36 +70,35 @@ impl Checker {
 
     // ==================================================
 
-    fn check_expr(&self, expr: &mut Expr) {
+    fn check_expr(&mut self, expr: &mut Expr) {
         match expr.kind() {
-            crate::ast::expr::ExprKind::Call => self.check_call_expr(expr.cast_mut::<CallExpr>()),
-            crate::ast::expr::ExprKind::IntLiteral => (),
-            crate::ast::expr::ExprKind::Postfix => {
-                self.check_postfix_expr(expr.cast_mut::<PostfixExpr>())
-            }
-            crate::ast::expr::ExprKind::StrLiteral => (),
+            ExprKind::Call => self.check_call_expr(expr.cast_mut::<CallExpr>()),
+            ExprKind::IntLiteral => (),
+            ExprKind::Ident => self.check_ident_expr(expr.cast_mut::<IdentExpr>()),
+            ExprKind::StrLiteral => (),
+            ExprKind::Member => (),
         }
     }
 
-    fn check_call_expr(&self, call_expr: &mut CallExpr) {
-        self.check_postfix_expr(&mut call_expr.postfix_expr);
+    fn check_call_expr(&mut self, call_expr: &mut CallExpr) {
+        self.check_expr(&mut call_expr.postfix_expr);
         for arg in &mut call_expr.args {
             self.check_arg(arg);
         }
     }
 
-    fn check_postfix_expr(&self, postfix_expr: &mut PostfixExpr) {
-        self.check_ident(&mut postfix_expr.ident);
+    fn check_ident_expr(&mut self, ident_expr: &mut IdentExpr) {
+        self.check_ident(&mut ident_expr.ident);
     }
 
     // ==================================================
 
-    fn check_ident(&self, ident: &mut Ident) {
+    fn check_ident(&mut self, ident: &mut Ident) {
         let decl_id = self.def_table.retrieve(&ident.name);
         ident.decl_id = decl_id;
     }
 
-    fn check_arg(&self, arg: &mut Arg) {
+    fn check_arg(&mut self, arg: &mut Arg) {
         self.check_expr(&mut arg.expr);
     }
 }

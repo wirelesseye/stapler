@@ -1,20 +1,25 @@
 mod call_expr;
+mod ident_expr;
 mod int_literal_expr;
-mod postfix_expr;
+mod member_expr;
 mod str_literal_expr;
 
 use std::{any::Any, fmt::Debug};
 
 pub use call_expr::*;
+pub use ident_expr::*;
 pub use int_literal_expr::*;
-pub use postfix_expr::*;
+pub use member_expr::*;
 pub use str_literal_expr::*;
+
+use super::types::Type;
 
 pub enum ExprKind {
     Call,
+    Ident,
     IntLiteral,
-    Postfix,
     StrLiteral,
+    Member,
 }
 
 pub trait ExprTrait: Debug {
@@ -23,8 +28,19 @@ pub trait ExprTrait: Debug {
     fn as_any(&self) -> &dyn Any;
 
     fn as_mut_any(&mut self) -> &mut dyn Any;
+
+    fn clone_box(&self) -> Box<dyn ExprTrait>;
+
+    fn r#type(&self) -> &Option<Type>;
 }
 
+impl Clone for Box<dyn ExprTrait> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+#[derive(Clone)]
 pub struct Expr {
     inner: Box<dyn ExprTrait>,
 }
@@ -32,6 +48,10 @@ pub struct Expr {
 impl Expr {
     pub fn kind(&self) -> ExprKind {
         self.inner.kind()
+    }
+
+    pub fn r#type(&self) -> &Option<Type> {
+        self.inner.r#type()
     }
 
     pub fn cast<T>(&self) -> &T

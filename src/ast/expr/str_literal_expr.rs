@@ -1,14 +1,26 @@
-use std::{fmt::Debug, any::Any};
+use std::{any::Any, fmt::Debug};
 
-use super::{ExprKind, ExprTrait};
+use crate::ast::{
+    ident::Ident,
+    types::{RefType, Type},
+};
 
+use super::{ExprKind, ExprTrait, IdentExpr};
+
+#[derive(Clone)]
 pub struct StrLiteralExpr {
     pub value: String,
+    pub r#type: Option<Type>,
 }
 
 impl StrLiteralExpr {
     pub fn new(value: String) -> Self {
-        Self { value }
+        Self {
+            value,
+            r#type: Some(
+                RefType::new(IdentExpr::new(Ident::new("String".to_string())).into()).into(),
+            ),
+        }
     }
 }
 
@@ -23,6 +35,14 @@ impl ExprTrait for StrLiteralExpr {
 
     fn as_mut_any(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn clone_box(&self) -> Box<dyn ExprTrait> {
+        Box::new(self.clone())
+    }
+
+    fn r#type(&self) -> &Option<Type> {
+        &self.r#type
     }
 }
 

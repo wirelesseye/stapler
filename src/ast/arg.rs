@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use super::expr::Expr;
 
+#[derive(Clone)]
 pub struct Arg {
     pub expr: Expr,
 }

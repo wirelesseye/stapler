@@ -25,8 +25,17 @@ pub trait TypeTrait: Debug {
     fn kind(&self) -> TypeKind;
 
     fn as_any(&self) -> &dyn Any;
+
+    fn clone_box(&self) -> Box<dyn TypeTrait>;
 }
 
+impl Clone for Box<dyn TypeTrait> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+#[derive(Clone)]
 pub struct Type {
     inner: Box<dyn TypeTrait>,
 }

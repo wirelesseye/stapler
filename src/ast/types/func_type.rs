@@ -4,6 +4,7 @@ use crate::{ast::param::Param, utils::join_list};
 
 use super::{Type, TypeKind, TypeTrait};
 
+#[derive(Clone)]
 pub struct FuncType {
     pub return_type: Type,
     pub params: Vec<Param>,
@@ -27,6 +28,10 @@ impl TypeTrait for FuncType {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn clone_box(&self) -> Box<dyn TypeTrait> {
+        Box::new(self.clone())
     }
 }
 

@@ -2,6 +2,7 @@ use std::{fmt::Debug, any::Any};
 
 use super::{TypeTrait, TypeKind};
 
+#[derive(Clone)]
 pub enum IntType {
     I8,
     I32,
@@ -15,6 +16,10 @@ impl TypeTrait for IntType {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn clone_box(&self) -> Box<dyn TypeTrait> {
+        Box::new(self.clone())
     }
 }
 

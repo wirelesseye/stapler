@@ -4,6 +4,7 @@ use crate::ast::expr::PostfixExpr;
 
 use super::{TypeKind, TypeTrait};
 
+#[derive(Clone)]
 pub struct RefType {
     pub postfix_expr: PostfixExpr,
 }
@@ -21,6 +22,10 @@ impl TypeTrait for RefType {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn clone_box(&self) -> Box<dyn TypeTrait> {
+        Box::new(self.clone())
     }
 }
 

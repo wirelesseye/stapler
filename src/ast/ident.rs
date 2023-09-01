@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+#[derive(Clone)]
 pub struct Ident {
     pub name: String,
     pub decl_id: Option<u64>,

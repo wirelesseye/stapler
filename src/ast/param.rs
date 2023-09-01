@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use super::types::Type;
 
+#[derive(Clone)]
 pub struct Param {
     pub name: String,
     pub r#type: Type,

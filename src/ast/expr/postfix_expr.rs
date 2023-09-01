@@ -4,6 +4,7 @@ use crate::ast::ident::Ident;
 
 use super::{ExprTrait, ExprKind};
 
+#[derive(Clone)]
 pub struct PostfixExpr {
     pub ident: Ident,
     pub child: Option<Box<PostfixExpr>>,

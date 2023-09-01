@@ -2,6 +2,7 @@ use std::{any::Any, fmt::Debug};
 
 use super::{TypeTrait, TypeKind, Type};
 
+#[derive(Clone)]
 pub struct ArrayType {
     pub elem_type: Type,
 }
@@ -21,6 +22,10 @@ impl TypeTrait for ArrayType {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+    
+    fn clone_box(&self) -> Box<dyn TypeTrait> {
+        Box::new(self.clone())
     }
 }
 

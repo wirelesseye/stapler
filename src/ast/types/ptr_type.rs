@@ -2,6 +2,7 @@ use std::{fmt::Debug, any::Any};
 
 use super::{Type, TypeKind, TypeTrait};
 
+#[derive(Clone)]
 pub struct PtrType {
     pub pointee: Type,
 }
@@ -19,6 +20,10 @@ impl TypeTrait for PtrType {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn clone_box(&self) -> Box<dyn TypeTrait> {
+        Box::new(self.clone())
     }
 }
 

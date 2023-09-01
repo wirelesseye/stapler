@@ -294,7 +294,7 @@ impl<'ctx> Codegen<'ctx> {
         let param_types: Vec<BasicMetadataTypeEnum> = params
             .iter()
             .map(|param| {
-                let llvm_type = self.compile_type(param.r#type());
+                let llvm_type = self.compile_type(&param.r#type);
                 match llvm_type {
                     AnyTypeEnum::ArrayType(_) => llvm_type.into_array_type().into(),
                     AnyTypeEnum::FloatType(_) => llvm_type.into_float_type().into(),

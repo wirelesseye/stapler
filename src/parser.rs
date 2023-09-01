@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident();
         self.expect_token(TokenKind::Colon);
         let r#type = self.parse_type();
-        Param::new(ident, r#type)
+        Param::new(ident.value, r#type)
     }
 
     fn parse_arg_list(&mut self) -> Vec<Arg> {

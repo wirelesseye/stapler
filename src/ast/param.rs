@@ -1,28 +1,20 @@
 use std::fmt::Debug;
 
-use super::{ident::Ident, types::Type};
+use super::types::Type;
 
 pub struct Param {
-    ident: Ident,
-    r#type: Type,
+    pub name: String,
+    pub r#type: Type,
 }
 
 impl Param {
-    pub fn new(ident: Ident, r#type: Type) -> Self {
-        Self { ident, r#type }
-    }
-
-    pub fn ident(&self) -> &Ident {
-        &self.ident
-    }
-
-    pub fn r#type(&self) -> &Type {
-        &self.r#type
+    pub fn new(name: String, r#type: Type) -> Self {
+        Self { name, r#type }
     }
 }
 
 impl Debug for Param {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}: {:?}", self.ident, self.r#type)
+        write!(f, "{}: {:?}", self.name, self.r#type)
     }
 }

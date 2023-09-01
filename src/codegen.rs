@@ -11,7 +11,7 @@ use inkwell::{
 
 use crate::ast::{
     decl::Decl,
-    expr::{CallExpr, Expr, ExprKind, IdentExpr, IntLiteralExpr, StrLiteralExpr},
+    expr::{CallExpr, Expr, ExprKind, IntLiteralExpr, RefExpr, StrLiteralExpr},
     module_ast::ModuleAST,
     stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
     types::{FuncType, IntType, PtrType, RefType, Type, TypeKind},
@@ -206,7 +206,7 @@ impl<'ctx> Codegen<'ctx> {
             ExprKind::StrLiteral => self
                 .build_str_literial_expr(module, builder, expr.cast::<StrLiteralExpr>())
                 .as_any_value_enum(),
-            ExprKind::Ident => self.build_ident_expr(module, builder, expr.cast::<IdentExpr>()),
+            ExprKind::Ref => self.build_ref_expr(module, builder, expr.cast::<RefExpr>()),
         }
     }
 
@@ -216,7 +216,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         call_expr: &CallExpr,
     ) -> inkwell::values::CallSiteValue {
-        let func_name = &call_expr.ident.value;
+        let func_name = &call_expr.r#ref.name;
         let function = module.get_function(func_name).unwrap();
         let args: Vec<inkwell::values::BasicMetadataValueEnum> = call_expr
             .args
@@ -260,13 +260,13 @@ impl<'ctx> Codegen<'ctx> {
             .const_int(str::parse::<u64>(&int_literial.value).unwrap(), false)
     }
 
-    fn build_ident_expr(
+    fn build_ref_expr(
         &'ctx self,
         module: &Module<'ctx>,
         builder: &Builder<'ctx>,
-        ident_expr: &IdentExpr,
+        ref_expr: &RefExpr,
     ) -> AnyValueEnum {
-        let (t, v) = self.retrieve_decl(&ident_expr.ident.value).unwrap();
+        let (t, v) = self.retrieve_decl(&ref_expr.r#ref.name).unwrap();
         return v;
     }
 
@@ -278,7 +278,7 @@ impl<'ctx> Codegen<'ctx> {
             TypeKind::Func => self.compile_func_type(r#type.cast::<FuncType>()).into(),
             TypeKind::Ptr => self.compile_ptr_type(r#type.cast::<PtrType>()).into(),
             TypeKind::Ref => self.compile_ref_type(r#type.cast::<RefType>()).into(),
-            TypeKind::Array => todo!()
+            TypeKind::Array => todo!(),
         }
     }
 
@@ -378,7 +378,7 @@ impl<'ctx> Codegen<'ctx> {
 
     fn compile_ref_type(&self, ref_type: &RefType) -> inkwell::types::PointerType {
         self.context
-            .opaque_struct_type(&ref_type.ident.value)
+            .opaque_struct_type(&ref_type.r#ref.name)
             .ptr_type(AddressSpace::default())
     }
 }

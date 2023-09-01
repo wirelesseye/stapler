@@ -1,18 +1,16 @@
 use std::{any::Any, fmt::Debug};
 
-use crate::ast::ident::Ident;
+use crate::ast::r#ref::Ref;
 
-use super::{TypeTrait, TypeKind};
+use super::{TypeKind, TypeTrait};
 
 pub struct RefType {
-    pub ident: Ident
+    pub r#ref: Ref,
 }
 
 impl RefType {
-    pub fn new(ident: Ident) -> Self {
-        Self {
-            ident
-        }
+    pub fn new(r#ref: Ref) -> Self {
+        Self { r#ref }
     }
 }
 
@@ -28,6 +26,6 @@ impl TypeTrait for RefType {
 
 impl Debug for RefType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.ident)
+        write!(f, "{:?}", self.r#ref)
     }
 }

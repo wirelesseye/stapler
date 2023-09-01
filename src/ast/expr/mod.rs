@@ -1,12 +1,12 @@
 mod call_expr;
-mod ident_expr;
+mod ref_expr;
 mod int_literal_expr;
 mod str_literal_expr;
 
 use std::{fmt::Debug, any::Any};
 
 pub use call_expr::*;
-pub use ident_expr::*;
+pub use ref_expr::*;
 pub use int_literal_expr::*;
 pub use str_literal_expr::*;
 
@@ -14,7 +14,7 @@ pub enum ExprKind {
     Call,
     IntLiteral,
     StrLiteral,
-    Ident,
+    Ref,
 }
 
 pub trait ExprTrait : Debug {

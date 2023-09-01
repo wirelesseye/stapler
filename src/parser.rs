@@ -2,11 +2,13 @@ use std::{fs::File, mem};
 
 use crate::{
     ast::{
+        arg::Arg,
         decl::Decl,
-        ident::Ident,
+        expr::{CallExpr, Expr, RefExpr, IntLiteralExpr, StrLiteralExpr},
         module_ast::ModuleAST,
-        stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, ReturnStmt},
-        types::{FuncType, IntType, Type, PtrType, RefType, ArrayType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
+        param::Param,
+        stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt},
+        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type}, r#ref::Ref,
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -117,7 +119,7 @@ impl<'a> Parser<'a> {
     // ==================================================
 
     fn parse_decl(&mut self) -> Decl {
-        let ident = self.parse_ident();
+        let name = self.parse_ident();
         let mut r#type = None;
 
         if self.curr_token.is_kind(TokenKind::Colon) {
@@ -128,41 +130,51 @@ impl<'a> Parser<'a> {
         if self.curr_token.is_kind(TokenKind::Assign) {
             self.accept_token();
             let value = self.parse_expr();
-            Decl::new(ident.value, r#type, Some(value))
+            Decl::new(name, r#type, Some(value))
         } else {
-            Decl::new(ident.value, r#type, None)
+            Decl::new(name, r#type, None)
         }
     }
 
     fn parse_expr(&mut self) -> Expr {
         match self.curr_token.kind() {
-            TokenKind::Identifier =>{
-                let ident = self.parse_ident();
+            TokenKind::Identifier => {
+                let r#ref = self.parse_ref();
                 if self.curr_token.kind() == TokenKind::LeftParen {
                     let arg_list = self.parse_arg_list();
-                    CallExpr::new(ident, arg_list).into()
+                    CallExpr::new(r#ref, arg_list).into()
                 } else {
-                    IdentExpr::new(ident).into()
+                    RefExpr::new(r#ref).into()
                 }
-            },
+            }
             TokenKind::IntLiteral => {
                 let token = self.accept_token();
                 IntLiteralExpr::new(token.spelling().to_string()).into()
-            },
+            }
             TokenKind::StrLiteral => {
                 let token = self.accept_token();
                 let spelling = token.spelling();
-                StrLiteralExpr::new(spelling[1..spelling.len()-1].to_string()).into()
-            },
+                StrLiteralExpr::new(spelling[1..spelling.len() - 1].to_string()).into()
+            }
             _ => panic!("unexpected expression at {:?}", self.curr_token.begin()),
         }
     }
 
     // ==================================================
 
-    fn parse_ident(&mut self) -> Ident {
+    fn parse_ident(&mut self) -> String {
         let token = self.expect_token(TokenKind::Identifier);
-        Ident::new(token.spelling().to_string())
+        token.spelling().to_owned()
+    }
+
+    fn parse_ref(&mut self) -> Ref {
+        let name = self.parse_ident();
+        let mut child: Option<Ref> = None;
+        if self.curr_token.is_kind(TokenKind::Dot) {
+            self.accept_token();
+            child = Some(self.parse_ref());
+        }
+        Ref::new(name, child)
     }
 
     // ==================================================
@@ -180,7 +192,7 @@ impl<'a> Parser<'a> {
             TokenKind::I64 => {
                 self.accept_token();
                 IntType::I64.into()
-            },
+            }
             TokenKind::Multiply => self.parse_ptr_type().into(),
             TokenKind::LeftParen => self.parse_func_type().into(),
             TokenKind::Identifier => self.parse_ref_type().into(),
@@ -213,8 +225,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ref_type(&mut self) -> RefType {
-        let ident = self.parse_ident();
-        RefType::new(ident)
+        let r#ref = self.parse_ref();
+        RefType::new(r#ref)
     }
 
     // ==================================================
@@ -259,17 +271,16 @@ impl<'a> Parser<'a> {
             } else {
                 list.push(self.parse_param());
             }
-            
         }
 
         return (list, false);
     }
 
     fn parse_param(&mut self) -> Param {
-        let ident = self.parse_ident();
+        let name = self.parse_ident();
         self.expect_token(TokenKind::Colon);
         let r#type = self.parse_type();
-        Param::new(ident.value, r#type)
+        Param::new(name, r#type)
     }
 
     fn parse_arg_list(&mut self) -> Vec<Arg> {

@@ -6,7 +6,7 @@ use crate::{
         ident::Ident,
         module_ast::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind},
-        types::{IntType, RefType},
+        types::{IntType, RefType, FuncType},
     },
     decl_table::DeclTable,
 };
@@ -58,13 +58,13 @@ impl Checker {
     fn check_decl(&mut self, decl: &mut Decl) {
         if let Some(value) = &mut decl.value {
             self.check_expr(value);
-            
+
             if decl.r#type.is_none() && value.r#type().is_some() {
                 decl.r#type = value.r#type().clone();
             }
         }
 
-        let decl_id = self.def_table.push(&decl.name);
+        let decl_id = self.def_table.push(&decl.name, decl.r#type.clone());
         decl.decl_id = Some(decl_id);
     }
 
@@ -73,10 +73,9 @@ impl Checker {
     fn check_expr(&mut self, expr: &mut Expr) {
         match expr.kind() {
             ExprKind::Call => self.check_call_expr(expr.cast_mut::<CallExpr>()),
-            ExprKind::IntLiteral => (),
             ExprKind::Ident => self.check_ident_expr(expr.cast_mut::<IdentExpr>()),
-            ExprKind::StrLiteral => (),
             ExprKind::Member => (),
+            _ => (),
         }
     }
 
@@ -85,17 +84,27 @@ impl Checker {
         for arg in &mut call_expr.args {
             self.check_arg(arg);
         }
+
+        if call_expr.r#type.is_none() {
+            let func_type = call_expr.postfix_expr.r#type().as_ref().unwrap().cast::<FuncType>();
+            call_expr.r#type = Some(func_type.return_type.clone());
+        }
     }
 
     fn check_ident_expr(&mut self, ident_expr: &mut IdentExpr) {
         self.check_ident(&mut ident_expr.ident);
+
+        let decl_entry = self.def_table.retrieve(&ident_expr.ident.name).unwrap();
+        if ident_expr.r#type.is_none() && decl_entry.r#type.is_some() {
+            ident_expr.r#type = decl_entry.r#type.clone();
+        }
     }
 
     // ==================================================
 
     fn check_ident(&mut self, ident: &mut Ident) {
-        let decl_id = self.def_table.retrieve(&ident.name);
-        ident.decl_id = decl_id;
+        let decl_entry = self.def_table.retrieve(&ident.name).unwrap();
+        ident.decl_id = Some(decl_entry.decl_id);
     }
 
     fn check_arg(&mut self, arg: &mut Arg) {

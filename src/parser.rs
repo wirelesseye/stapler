@@ -4,7 +4,7 @@ use crate::{
     ast::{
         decl::Decl,
         ident::Ident,
-        module::ModuleAST,
+        module_ast::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, ReturnStmt},
         types::{FuncType, IntType, Type, PtrType, RefType}, param::Param, expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, StrLiteralExpr}, arg::Arg,
     },

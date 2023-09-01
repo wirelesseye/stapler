@@ -1,4 +1,4 @@
-use crate::ast::module::ModuleAST;
+use crate::ast::module_ast::ModuleAST;
 
 pub struct Checker {
 

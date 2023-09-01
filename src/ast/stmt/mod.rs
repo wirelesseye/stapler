@@ -1,14 +1,14 @@
-mod decl;
-mod expr;
-mod r#extern;
-mod r#return;
+mod decl_stmt;
+mod expr_stmt;
+mod extern_stmt;
+mod return_stmt;
 
 use std::{fmt::Debug, any::Any};
 
-pub use decl::*;
-pub use expr::*;
-pub use r#extern::*;
-pub use r#return::*;
+pub use decl_stmt::*;
+pub use expr_stmt::*;
+pub use extern_stmt::*;
+pub use return_stmt::*;
 
 pub enum StmtKind {
     Decl,

@@ -2,7 +2,7 @@ use std::{fmt::Debug, any::Any};
 
 use crate::utils::join_list;
 
-use super::{decl::DeclStmt, StmtKind, StmtTrait};
+use super::{decl_stmt::DeclStmt, StmtKind, StmtTrait};
 
 pub struct ExternStmt {
     decl_stmts: Vec<DeclStmt>,

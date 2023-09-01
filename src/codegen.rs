@@ -12,7 +12,7 @@ use inkwell::{
 use crate::ast::{
     decl::Decl,
     expr::{CallExpr, Expr, ExprKind, IdentExpr, IntLiteralExpr, StrLiteralExpr},
-    module::ModuleAST,
+    module_ast::ModuleAST,
     stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
     types::{FuncType, IntType, PtrType, RefType, Type, TypeKind},
 };

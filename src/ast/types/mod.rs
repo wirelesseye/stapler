@@ -1,14 +1,14 @@
-mod func;
-mod int;
-mod ptr;
-mod r#ref;
+mod func_type;
+mod int_type;
+mod ptr_type;
+mod ref_type;
 
 use std::{fmt::Debug, any::Any};
 
-pub use func::*;
-pub use int::*;
-pub use ptr::*;
-pub use r#ref::*;
+pub use func_type::*;
+pub use int_type::*;
+pub use ptr_type::*;
+pub use ref_type::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TypeKind {

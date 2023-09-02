@@ -8,8 +8,8 @@ use crate::{
         ident::Ident,
         module_ast::ModuleAST,
         param::Param,
-        stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt},
-        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type},
+        stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, TypedefStmt},
+        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type, StructType},
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -74,6 +74,7 @@ impl<'a> Parser<'a> {
             TokenKind::Let | TokenKind::Export => self.parse_decl_stmt().into(),
             TokenKind::Extern => self.parse_extern_stmt().into(),
             TokenKind::Return => self.parse_return_stmt().into(),
+            TokenKind::Typedef => self.parse_typedef_stmt().into(),
             _ => ExprStmt::new(self.parse_expr()).into(),
         }
     }
@@ -115,6 +116,15 @@ impl<'a> Parser<'a> {
         self.expect_token(TokenKind::Return);
         let expr = self.parse_expr();
         ReturnStmt::new(Some(expr))
+    }
+
+    fn parse_typedef_stmt(&mut self) -> TypedefStmt {
+        self.expect_token(TokenKind::Typedef);
+
+        let lhs = self.parse_type();
+        let rhs = self.parse_type();
+
+        return TypedefStmt::new(lhs, rhs);
     }
 
     // ==================================================
@@ -209,6 +219,7 @@ impl<'a> Parser<'a> {
             TokenKind::Multiply => self.parse_ptr_type().into(),
             TokenKind::LeftParen => self.parse_func_type().into(),
             TokenKind::Identifier => self.parse_ref_type().into(),
+            TokenKind::Restrict | TokenKind::LeftBrace => self.parse_struct_type().into(),
             _ => panic!(
                 "Unexpected token when parsing type: {}",
                 self.curr_token.spelling()
@@ -240,6 +251,35 @@ impl<'a> Parser<'a> {
     fn parse_ref_type(&mut self) -> RefType {
         let expr = self.parse_expr();
         RefType::new(expr)
+    }
+
+    fn parse_struct_type(&mut self) -> StructType {
+        let is_restrict = if self.curr_token.is_kind(TokenKind::Restrict) {
+            self.accept_token();
+            true
+        } else {
+            false
+        };
+
+        self.expect_token(TokenKind::LeftBrace);
+
+        let mut fields = Vec::new();
+        loop {
+            if self.curr_token.is_kind(TokenKind::RightBrace) {
+                break;
+            }
+
+            fields.push(self.parse_param());
+
+            if self.curr_token.is_kind(TokenKind::Comma) {
+                self.accept_token();
+            } else {
+                break;
+            }
+        }
+        self.expect_token(TokenKind::RightBrace);
+
+        StructType::new(fields, is_restrict)
     }
 
     // ==================================================

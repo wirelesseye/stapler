@@ -6,7 +6,7 @@ use crate::{
         ident::Ident,
         module_ast::ModuleAST,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind},
-        types::{IntType, RefType, FuncType},
+        types::{FuncType, RefType, Type, TypeKind},
     },
     decl_table::DeclTable,
 };
@@ -33,7 +33,7 @@ impl Checker {
             StmtKind::Decl => self.check_decl_stmt(stmt.cast_mut::<DeclStmt>()),
             StmtKind::Extern => self.check_extern_stmt(stmt.cast_mut::<ExternStmt>()),
             StmtKind::Expr => self.check_expr_stmt(stmt.cast_mut::<ExprStmt>()),
-            StmtKind::Return => (),
+            _ => (),
         }
     }
 
@@ -86,7 +86,12 @@ impl Checker {
         }
 
         if call_expr.r#type.is_none() {
-            let func_type = call_expr.postfix_expr.r#type().as_ref().unwrap().cast::<FuncType>();
+            let func_type = call_expr
+                .postfix_expr
+                .r#type()
+                .as_ref()
+                .unwrap()
+                .cast::<FuncType>();
             call_expr.r#type = Some(func_type.return_type.clone());
         }
     }
@@ -98,6 +103,19 @@ impl Checker {
         if ident_expr.r#type.is_none() && decl_entry.r#type.is_some() {
             ident_expr.r#type = decl_entry.r#type.clone();
         }
+    }
+
+    // ==================================================
+
+    fn check_type(&mut self, r#type: &mut Type) {
+        match r#type.kind() {
+            TypeKind::Ref => self.check_ref_type(r#type.cast_mut::<RefType>()),
+            _ => (),
+        }
+    }
+
+    fn check_ref_type(&mut self, ref_type: &mut RefType) {
+        self.check_expr(&mut ref_type.expr);
     }
 
     // ==================================================

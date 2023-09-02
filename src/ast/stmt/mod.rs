@@ -2,6 +2,7 @@ mod decl_stmt;
 mod expr_stmt;
 mod extern_stmt;
 mod return_stmt;
+mod typedef_stmt;
 
 use std::{fmt::Debug, any::Any};
 
@@ -9,12 +10,14 @@ pub use decl_stmt::*;
 pub use expr_stmt::*;
 pub use extern_stmt::*;
 pub use return_stmt::*;
+pub use typedef_stmt::*;
 
 pub enum StmtKind {
     Decl,
     Extern,
     Expr,
     Return,
+    Typedef,
 }
 
 pub trait StmtTrait : Debug {

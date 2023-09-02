@@ -1,8 +1,8 @@
-use std::{fs::File, mem};
 use phf::phf_set;
+use std::{fs::File, mem};
 
 use crate::char_reader::{CharReader, EOL};
-use crate::token::{Token, TokenKind, CursorPos};
+use crate::token::{CursorPos, Token, TokenKind};
 
 const PUNCTUATIONS: phf::Set<char> = phf_set! {
     '=', ',', '.', '!', '(', ')', '[', ']', '{', '}', ':', ';', '+', '-', '<', '>', '*', '@', '"', '\''
@@ -90,35 +90,32 @@ impl<'a> Lexer<'a> {
         loop {
             match self.curr_char {
                 Some(c) if c.is_whitespace() => self.skip_char(),
-                Some('/') => {
-                    match self.inspect_char(0) {
-                        Some('/') => {
-                            loop {
+                Some('/') => match self.inspect_char(0) {
+                    Some('/') => loop {
+                        self.skip_char();
+                        match self.curr_char {
+                            None | Some(EOL) => break,
+                            _ => (),
+                        };
+                    },
+                    Some('*') => {
+                        self.skip_char();
+                        loop {
+                            if self.curr_char.is_some() {
                                 self.skip_char();
-                                match self.curr_char {
-                                    None | Some(EOL) => break,
-                                    _ => (),
-                                };
-                            }
-                        },
-                        Some('*') => {
-                            self.skip_char();
-                            loop {
-                                if self.curr_char.is_some() {
-                                    self.skip_char();
-                                    if self.curr_char == Some('*') && self.inspect_char(0) == Some('/') {
-                                        break;
-                                    }
-                                } else {
-                                    panic!("unterminated comment");
+                                if self.curr_char == Some('*') && self.inspect_char(0) == Some('/')
+                                {
+                                    break;
                                 }
-                            };
-                            self.skip_char();
-                            self.skip_char();
-                        },
-                        _ => (),
+                            } else {
+                                panic!("unterminated comment");
+                            }
+                        }
+                        self.skip_char();
+                        self.skip_char();
                     }
-                }
+                    _ => (),
+                },
                 _ => break,
             }
         }
@@ -130,11 +127,11 @@ impl<'a> Lexer<'a> {
             Some(':') => {
                 self.accept_char();
                 TokenKind::Colon
-            },
+            }
             Some(';') => {
                 self.accept_char();
                 TokenKind::Semicolon
-            },
+            }
             Some(',') => {
                 self.accept_char();
                 TokenKind::Comma
@@ -149,7 +146,7 @@ impl<'a> Lexer<'a> {
                         self.accept_char();
                         return TokenKind::Ellipsis;
                     }
-                    
+
                     return TokenKind::To;
                 }
 
@@ -161,7 +158,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     self.extract_fraction()
                 }
-            },
+            }
             Some('=') => {
                 self.accept_char();
                 if self.curr_char == Some('=') {
@@ -170,39 +167,39 @@ impl<'a> Lexer<'a> {
                 } else {
                     TokenKind::Assign
                 }
-            },
+            }
             Some('{') => {
                 self.accept_char();
                 TokenKind::LeftBrace
-            },
+            }
             Some('}') => {
                 self.accept_char();
                 TokenKind::RightBrace
-            },
+            }
             Some('(') => {
                 self.accept_char();
                 TokenKind::LeftParen
-            },
+            }
             Some(')') => {
                 self.accept_char();
                 TokenKind::RightParen
-            },
+            }
             Some('[') => {
                 self.accept_char();
                 TokenKind::LeftBracket
-            },
+            }
             Some(']') => {
                 self.accept_char();
                 TokenKind::RightBracket
-            },
+            }
             Some('<') => {
                 self.accept_char();
                 TokenKind::LeftChevron
-            },
+            }
             Some('>') => {
                 self.accept_char();
                 TokenKind::RightChevron
-            },
+            }
             Some('+') => {
                 self.accept_char();
                 if self.curr_char == Some('+') {
@@ -211,7 +208,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     TokenKind::Plus
                 }
-            },
+            }
             Some('-') => {
                 self.accept_char();
                 if self.curr_char == Some('>') {
@@ -222,15 +219,15 @@ impl<'a> Lexer<'a> {
                 } else {
                     TokenKind::Minus
                 }
-            },
+            }
             Some('*') => {
                 self.accept_char();
                 TokenKind::Multiply
-            },
+            }
             Some('/') => {
                 self.accept_char();
                 TokenKind::Divide
-            },
+            }
             Some('!') => {
                 self.accept_char();
                 if self.curr_char == Some('=') {
@@ -239,7 +236,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     TokenKind::Not
                 }
-            },
+            }
             Some('"') => {
                 self.accept_char();
                 loop {
@@ -259,10 +256,10 @@ impl<'a> Lexer<'a> {
                     }
 
                     self.accept_char();
-                };
+                }
                 self.accept_char();
                 TokenKind::StrLiteral
-            },
+            }
             Some('\'') => {
                 self.accept_char();
                 loop {
@@ -282,10 +279,10 @@ impl<'a> Lexer<'a> {
                     }
 
                     self.accept_char();
-                };
+                }
                 self.accept_char();
                 TokenKind::CharLiteral
-            },
+            }
             Some(c) if c.is_numeric() => {
                 loop {
                     self.accept_char();
@@ -302,11 +299,11 @@ impl<'a> Lexer<'a> {
                         } else {
                             TokenKind::IntLiteral
                         }
-                    },
+                    }
                     Some('e' | 'E') => self.extract_fraction(),
-                    _ => TokenKind::IntLiteral
+                    _ => TokenKind::IntLiteral,
                 }
-            },
+            }
             Some(c) if is_letter(c) => {
                 loop {
                     match self.curr_char {
@@ -324,11 +321,11 @@ impl<'a> Lexer<'a> {
                 } else {
                     TokenKind::Identifier
                 }
-            },
+            }
             _ => {
                 self.accept_char();
                 TokenKind::Unknown
-            },
+            }
         }
     }
 
@@ -339,12 +336,14 @@ impl<'a> Lexer<'a> {
             "import" => Some(TokenKind::Import),
             "let" => Some(TokenKind::Let),
             "mut" => Some(TokenKind::Mut),
+            "restrict" => Some(TokenKind::Restrict),
             "return" => Some(TokenKind::Return),
+            "typedef" => Some(TokenKind::Typedef),
 
             "i8" => Some(TokenKind::I8),
             "i32" => Some(TokenKind::I32),
             "i64" => Some(TokenKind::I64),
-            _ => None
+            _ => None,
         }
     }
 
@@ -364,7 +363,8 @@ impl<'a> Lexer<'a> {
             let nc = self.inspect_char(1);
 
             if c.is_some() && c.unwrap().is_numeric()
-                || (matches!(c, Some('+' | '-')) && nc.is_some() && nc.unwrap().is_numeric()) {
+                || (matches!(c, Some('+' | '-')) && nc.is_some() && nc.unwrap().is_numeric())
+            {
                 self.accept_char();
                 loop {
                     self.accept_char();
@@ -382,39 +382,39 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn extract_escape(&mut self) -> bool{
+    fn extract_escape(&mut self) -> bool {
         match self.curr_char {
             Some('n') => {
                 self.skip_char();
                 self.spelling.push('\n');
                 true
-            },
+            }
             Some('r') => {
                 self.skip_char();
                 self.spelling.push('\r');
                 true
-            },
+            }
             Some('t') => {
                 self.skip_char();
                 self.spelling.push('\t');
                 true
-            },
+            }
             Some('\\') => {
                 self.skip_char();
                 self.spelling.push('\\');
                 true
-            },
+            }
             Some('\'') => {
                 self.skip_char();
                 self.spelling.push('\'');
                 true
-            },
+            }
             Some('"') => {
                 self.skip_char();
                 self.spelling.push('\"');
                 true
-            },
-            _ => false
+            }
+            _ => false,
         }
     }
 }

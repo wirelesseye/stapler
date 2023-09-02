@@ -1,0 +1,24 @@
+extern {
+    let printf: (format: *i8, ...args: unsafe.any[]) -> i32 // external function from C
+}
+
+typedef Person restrict {
+    firstName: string,
+    lastName: string,
+    age: i32,
+}
+
+let Person.new = (firstName: string, lastName: string, age: i32) -> {
+    return Person {
+        firstName,
+        lastName,
+        age
+    }
+}
+
+let Person.fullName = (self) -> {
+    printf("%s %s", self.firstName, self.lastName);
+}
+
+let person = Person.new("John", "Smith", 32)
+person.fullName()

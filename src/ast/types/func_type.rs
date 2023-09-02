@@ -30,6 +30,10 @@ impl TypeTrait for FuncType {
         self
     }
 
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
+
     fn clone_box(&self) -> Box<dyn TypeTrait> {
         Box::new(self.clone())
     }

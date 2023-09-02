@@ -43,7 +43,9 @@ pub enum TokenKind {
     Import,
     Let,
     Mut,
+    Restrict,
     Return,
+    Typedef,
 
     // Primitive types
     I8,

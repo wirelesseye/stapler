@@ -1,0 +1,6 @@
+typedef Person restrict {
+    firstName: String,
+    lastName: String,
+    age: i32,
+}
+

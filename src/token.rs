@@ -45,7 +45,7 @@ pub enum TokenKind {
     Mut,
     Restrict,
     Return,
-    Typedef,
+    Type,
 
     // Primitive types
     I8,

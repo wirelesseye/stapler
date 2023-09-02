@@ -338,7 +338,7 @@ impl<'a> Lexer<'a> {
             "mut" => Some(TokenKind::Mut),
             "restrict" => Some(TokenKind::Restrict),
             "return" => Some(TokenKind::Return),
-            "typedef" => Some(TokenKind::Typedef),
+            "type" => Some(TokenKind::Type),
 
             "i8" => Some(TokenKind::I8),
             "i32" => Some(TokenKind::I32),

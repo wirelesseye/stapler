@@ -3,7 +3,7 @@ mod func_type;
 mod int_type;
 mod ptr_type;
 mod ref_type;
-mod struct_type;
+mod composite_type;
 
 use std::{fmt::Debug, any::Any};
 
@@ -12,7 +12,7 @@ pub use func_type::*;
 pub use int_type::*;
 pub use ptr_type::*;
 pub use ref_type::*;
-pub use struct_type::*;
+pub use composite_type::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TypeKind {
@@ -21,7 +21,7 @@ pub enum TypeKind {
     Func,
     Ptr,
     Ref,
-    Struct,
+    Composite,
 }
 
 pub trait TypeTrait: Debug {

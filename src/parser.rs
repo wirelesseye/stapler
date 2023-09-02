@@ -8,8 +8,8 @@ use crate::{
         ident::Ident,
         module_ast::ModuleAST,
         param::Param,
-        stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, TypedefStmt},
-        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type, StructType},
+        stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, TypeStmt},
+        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type, CompositeType},
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
             TokenKind::Let | TokenKind::Export => self.parse_decl_stmt().into(),
             TokenKind::Extern => self.parse_extern_stmt().into(),
             TokenKind::Return => self.parse_return_stmt().into(),
-            TokenKind::Typedef => self.parse_typedef_stmt().into(),
+            TokenKind::Type => self.parse_type_stmt().into(),
             _ => ExprStmt::new(self.parse_expr()).into(),
         }
     }
@@ -118,13 +118,13 @@ impl<'a> Parser<'a> {
         ReturnStmt::new(Some(expr))
     }
 
-    fn parse_typedef_stmt(&mut self) -> TypedefStmt {
-        self.expect_token(TokenKind::Typedef);
+    fn parse_type_stmt(&mut self) -> TypeStmt {
+        self.expect_token(TokenKind::Type);
 
         let lhs = self.parse_type();
         let rhs = self.parse_type();
 
-        return TypedefStmt::new(lhs, rhs);
+        return TypeStmt::new(lhs, rhs);
     }
 
     // ==================================================
@@ -219,7 +219,7 @@ impl<'a> Parser<'a> {
             TokenKind::Multiply => self.parse_ptr_type().into(),
             TokenKind::LeftParen => self.parse_func_type().into(),
             TokenKind::Identifier => self.parse_ref_type().into(),
-            TokenKind::Restrict | TokenKind::LeftBrace => self.parse_struct_type().into(),
+            TokenKind::Restrict | TokenKind::LeftBrace => self.parse_composite_type().into(),
             _ => panic!(
                 "Unexpected token when parsing type: {}",
                 self.curr_token.spelling()
@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
         RefType::new(expr)
     }
 
-    fn parse_struct_type(&mut self) -> StructType {
+    fn parse_composite_type(&mut self) -> CompositeType {
         let is_restrict = if self.curr_token.is_kind(TokenKind::Restrict) {
             self.accept_token();
             true
@@ -268,18 +268,11 @@ impl<'a> Parser<'a> {
             if self.curr_token.is_kind(TokenKind::RightBrace) {
                 break;
             }
-
             fields.push(self.parse_param());
-
-            if self.curr_token.is_kind(TokenKind::Comma) {
-                self.accept_token();
-            } else {
-                break;
-            }
         }
         self.expect_token(TokenKind::RightBrace);
 
-        StructType::new(fields, is_restrict)
+        CompositeType::new(fields, is_restrict)
     }
 
     // ==================================================

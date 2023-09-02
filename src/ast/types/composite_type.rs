@@ -5,12 +5,12 @@ use crate::{ast::param::Param, utils::join_list};
 use super::{TypeTrait, TypeKind};
 
 #[derive(Clone)]
-pub struct StructType {
+pub struct CompositeType {
     pub fields: Vec<Param>,
     pub is_restrict: bool,
 }
 
-impl StructType {
+impl CompositeType {
     pub fn new(fields: Vec<Param>, is_restrict: bool) -> Self {
         Self {
             fields,
@@ -19,9 +19,9 @@ impl StructType {
     }
 }
 
-impl TypeTrait for StructType {
+impl TypeTrait for CompositeType {
     fn kind(&self) -> TypeKind {
-        TypeKind::Struct
+        TypeKind::Composite
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -37,7 +37,7 @@ impl TypeTrait for StructType {
     }
 }
 
-impl Debug for StructType {
+impl Debug for CompositeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_restrict {
             write!(f, "restrict ")?;
@@ -45,7 +45,7 @@ impl Debug for StructType {
         write!(
             f,
             "{{\n{}\n}}",
-            join_list(&self.fields, ",\n")
+            join_list(&self.fields, "\n")
         )?;
         Ok(())
     }

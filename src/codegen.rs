@@ -91,7 +91,7 @@ impl<'ctx> Codegen<'ctx> {
             StmtKind::Decl => self.build_decl_stmt(module, builder, stmt.cast::<DeclStmt>()),
             StmtKind::Expr => self.build_expr_stmt(module, builder, stmt.cast::<ExprStmt>()),
             StmtKind::Return => self.build_return_stmt(module, builder, stmt.cast::<ReturnStmt>()),
-            StmtKind::Typedef => (),
+            StmtKind::Type => (),
         }
     }
 
@@ -289,7 +289,7 @@ impl<'ctx> Codegen<'ctx> {
             TypeKind::Ptr => self.compile_ptr_type(r#type.cast::<PtrType>()).into(),
             TypeKind::Ref => self.compile_ref_type(r#type.cast::<RefType>()).into(),
             TypeKind::Array => todo!(),
-            TypeKind::Struct => todo!(),
+            TypeKind::Composite => todo!(),
         }
     }
 

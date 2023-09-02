@@ -4,20 +4,20 @@ use crate::ast::types::Type;
 
 use super::{StmtKind, StmtTrait};
 
-pub struct TypedefStmt {
+pub struct TypeStmt {
     pub lhs: Type,
     pub rhs: Type,
 }
 
-impl TypedefStmt {
+impl TypeStmt {
     pub fn new(lhs: Type, rhs: Type) -> Self {
         Self { lhs, rhs }
     }
 }
 
-impl StmtTrait for TypedefStmt {
+impl StmtTrait for TypeStmt {
     fn kind(&self) -> StmtKind {
-        StmtKind::Typedef
+        StmtKind::Type
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -29,7 +29,7 @@ impl StmtTrait for TypedefStmt {
     }
 }
 
-impl Debug for TypedefStmt {
+impl Debug for TypeStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "typedef {:?} {:?}", self.lhs, self.rhs)
     }

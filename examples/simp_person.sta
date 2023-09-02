@@ -1,6 +1,6 @@
-typedef Person restrict {
-    firstName: String,
-    lastName: String,
-    age: i32,
+type Person {
+    firstName: String
+    lastName: String
+    age: i32
 }
 

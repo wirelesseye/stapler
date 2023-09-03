@@ -44,11 +44,11 @@ type Person {
     }
 }
 
-// Modify mutable static field
+// Modify the mutable static field
 Person.currentYear = 2023
 
 type Student {
-    // A composite type extends another type by include it as a field with the `inherit` keyword
+    // A composite type can use the `inherit` keyword to extend another type by include it as a field
     inherit person: Person
     studentId: string
 

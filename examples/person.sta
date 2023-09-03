@@ -48,8 +48,8 @@ type Person {
 Person.currentYear = 2023
 
 type Student {
-    // A type extends another type by include it as a field with `extends` keyword
-    extends person: Person
+    // A composite type extends another type by include it as a field with the `inherit` keyword
+    inherit person: Person
     studentId: string
 
     static {

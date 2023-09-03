@@ -2,6 +2,19 @@ extern {
     let printf: (format: *i8, ...args: unsafe.any[]) -> i32 // external function from C
 }
 
+/**
+ * Keyword `type` is used for defining type alias. Here we are defining a new type
+ * `Person`, which is an alias for a composite type.
+ *
+ * A composite type with private fields is restricted, which means it cannot be
+ * constructed outside of this file.
+ * 
+ * Alternative, you can use the `restrict` keyword to make a composite type with
+ * all fields public restricted. For example:
+ ```
+ type Person restrict {...}
+ ```
+*/
 type Person {
     firstName: String
     lastName: String

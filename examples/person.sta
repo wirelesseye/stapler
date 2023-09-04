@@ -21,7 +21,7 @@ type Person {
     birthYear: i32
     ;
     
-    // Static fields are defined after the semicolon
+    // Static fields are defined after the first semicolon
 
     // `mut` keyword makes a static field mutable outside the type definition
     mut currentYear = 0
@@ -30,7 +30,9 @@ type Person {
     // consturcted in other files by calling this method
     pub new = {{
         firstName: String, lastName: String, birthYear: i32 -> Person;
-        return Person {
+
+        // The last expression will be returned if the type is applicable
+        Person {
             firstName,
             lastName,
             birthYear
@@ -64,7 +66,7 @@ type Student {
         studentId: string
         -> Student;
 
-        return Student {
+        Student {
             person: Person.new(firstName, lastName, birthYear),
             studentId
         }

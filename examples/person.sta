@@ -1,5 +1,5 @@
 extern {
-    let printf: (format: *i8, ...args: unsafe.any[]) -> i32 // external function from C
+    let printf: {{format: *i8, ...args: unsafe.any[] -> i32}} // external function from C
 }
 
 /**
@@ -19,29 +19,33 @@ type Person {
     firstName: String
     lastName: String
     birthYear: i32
+    ;
+    
+    // Static fields are defined after the semicolon
 
-    static {
-        // `mut` keyword makes a static field mutable outside the type definition
-        mut currentYear = 0
+    // `mut` keyword makes a static field mutable outside the type definition
+    mut currentYear = 0
 
-        // Create a static method to construct the type so that the type can be
-        // consturcted in other files by calling this method
-        pub new = (firstName: String, lastName: String, birthYear: i32) -> Person {
-            return Person {
-                firstName,
-                lastName,
-                birthYear
-            }
+    // Create a static method to construct the type so that the type can be
+    // consturcted in other files by calling this method
+    pub new = {{
+        firstName: String, lastName: String, birthYear: i32 -> Person;
+        return Person {
+            firstName,
+            lastName,
+            birthYear
         }
+    }}
 
-        pub fullName = (self) -> {
-            printf("%s %s", self.firstName, self.lastName);
-        }
+    pub fullName = {{
+        self;
+        printf("%s %s", self.firstName, self.lastName)
+    }}
 
-        pub age = (self) -> {
-            return Person.currentYear - self.birthYear
-        }
-    }
+    pub age = {{
+        self;
+        return Person.currentYear - self.birthYear
+    }}
 }
 
 // Modify the mutable static field
@@ -51,24 +55,25 @@ type Student {
     // A composite type can use the `inherit` keyword to extend another type by include it as a field
     inherit person: Person
     studentId: string
+    ;
 
-    static {
-        pub new = (
-            firstName: String,
-            lastName: String,
-            birthYear: i32,
-            studentId: string
-        ) -> {
-            return Student {
-                person: Person.new(firstName, lastName, birthYear),
-                studentId
-            }
-        }
+    pub new = {{
+        firstName: String
+        lastName: String
+        birthYear: i32
+        studentId: string
+        -> Student;
 
-        pub studentId = (self) -> {
-            return self.studentId
+        return Student {
+            person: Person.new(firstName, lastName, birthYear),
+            studentId
         }
-    }
+    }}
+
+    pub studentId = {{
+        self;
+        return self.studentId
+    }}
 }
 
 // Use of custom type

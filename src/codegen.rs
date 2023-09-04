@@ -20,6 +20,7 @@ use crate::ast::{
 pub struct Codegen<'ctx> {
     context: Context,
     decl_map: RefCell<HashMap<u64, (AnyTypeEnum<'ctx>, AnyValueEnum<'ctx>)>>,
+    type_map: RefCell<HashMap<u64, AnyTypeEnum<'ctx>>>,
 }
 
 impl<'ctx> Codegen<'ctx> {
@@ -27,6 +28,7 @@ impl<'ctx> Codegen<'ctx> {
         Self {
             context: Context::create(),
             decl_map: RefCell::new(HashMap::new()),
+            type_map: RefCell::new(HashMap::new()),
         }
     }
 
@@ -69,18 +71,27 @@ impl<'ctx> Codegen<'ctx> {
 
     fn set_value(
         &self,
-        decl_id: u64,
+        value_id: u64,
         llvm_type: AnyTypeEnum<'ctx>,
         llvm_value: AnyValueEnum<'ctx>,
     ) {
         self.decl_map
             .borrow_mut()
-            .insert(decl_id, (llvm_type, llvm_value));
+            .insert(value_id, (llvm_type, llvm_value));
     }
 
-    fn get_value(&self, decl_id: u64) -> (AnyTypeEnum, AnyValueEnum) {
+    fn get_value(&self, value_id: u64) -> (AnyTypeEnum, AnyValueEnum) {
         let decl_map = self.decl_map.borrow();
-        decl_map.get(&decl_id).unwrap().clone()
+        decl_map.get(&value_id).unwrap().clone()
+    }
+
+    fn set_type(&self, type_id: u64, llvm_type: AnyTypeEnum<'ctx>) {
+        self.type_map.borrow_mut().insert(type_id, llvm_type);
+    }
+
+    fn get_type(&self, type_id: u64) -> AnyTypeEnum {
+        let type_map = self.type_map.borrow();
+        type_map.get(&type_id).unwrap().clone()
     }
 
     // ==================================================
@@ -174,7 +185,7 @@ impl<'ctx> Codegen<'ctx> {
         if let Some(expr) = &decl.value {
             let llvm_type = self.compile_type(decl.r#type.as_ref().unwrap());
             let llvm_value = self.build_expr(module, builder, expr);
-            self.set_value(decl.decl_id.unwrap(), llvm_type, llvm_value);
+            self.set_value(decl.value_id.unwrap(), llvm_type, llvm_value);
         }
     }
 
@@ -190,7 +201,7 @@ impl<'ctx> Codegen<'ctx> {
         let llvm_func_value = module.add_function(name, llvm_func_type, None);
 
         self.set_value(
-            decl.decl_id.unwrap(),
+            decl.value_id.unwrap(),
             llvm_func_type.into(),
             llvm_func_value.into(),
         );
@@ -276,7 +287,7 @@ impl<'ctx> Codegen<'ctx> {
         builder: &Builder<'ctx>,
         ident_expr: &IdentExpr,
     ) -> AnyValueEnum {
-        let (_t, v) = self.get_value(ident_expr.ident.decl_id.unwrap());
+        let (_t, v) = self.get_value(ident_expr.ident.symbol_id.unwrap());
         v
     }
 
@@ -387,18 +398,10 @@ impl<'ctx> Codegen<'ctx> {
         }
     }
 
-    fn compile_ref_type(&self, ref_type: &RefType) -> inkwell::types::PointerType {
-        match ref_type.expr.kind() {
-            ExprKind::Call => todo!(),
-            ExprKind::Ident => {
-                let ident = &ref_type.expr.cast::<IdentExpr>().ident;
-                self.context
-                    .opaque_struct_type(&ident.name)
-                    .ptr_type(AddressSpace::default())
-            }
-            ExprKind::IntLiteral => todo!(),
-            ExprKind::StrLiteral => todo!(),
-            ExprKind::Member => todo!(),
-        }
+    fn compile_ref_type(&self, ref_type: &RefType) -> AnyTypeEnum {
+        self.get_type(ref_type.type_id.unwrap())
+        // self.context
+        //     .opaque_struct_type(&ref_type.name)
+        //     .ptr_type(AddressSpace::default())
     }
 }

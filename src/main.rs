@@ -15,7 +15,7 @@ mod char_reader;
 mod codegen;
 mod lexer;
 mod parser;
-mod decl_table;
+mod symbol_table;
 mod token;
 mod utils;
 

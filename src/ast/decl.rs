@@ -6,7 +6,7 @@ pub struct Decl {
     pub name: String,
     pub r#type: Option<Type>,
     pub value: Option<Expr>,
-    pub decl_id: Option<u64>,
+    pub value_id: Option<u64>,
 }
 
 impl Decl {
@@ -15,7 +15,7 @@ impl Decl {
             name,
             r#type,
             value,
-            decl_id: None,
+            value_id: None,
         }
     }
 }
@@ -23,8 +23,8 @@ impl Decl {
 impl Debug for Decl {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "let {}", self.name)?;
-        if let Some(decl_id) = self.decl_id {
-            write!(f, "({})", decl_id)?;
+        if let Some(value_id) = self.value_id {
+            write!(f, "({})", value_id)?;
         }
         if let Some(r#type) = &self.r#type {
             write!(f, ": {:?}", r#type)?;

@@ -121,10 +121,10 @@ impl<'a> Parser<'a> {
     fn parse_type_stmt(&mut self) -> TypeStmt {
         self.expect_token(TokenKind::Type);
 
-        let lhs = self.parse_type();
-        let rhs = self.parse_type();
+        let ident = self.parse_ident();
+        let r#type = self.parse_type();
 
-        return TypeStmt::new(lhs, rhs);
+        return TypeStmt::new(ident, r#type);
     }
 
     // ==================================================
@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
     // ==================================================
 
     fn parse_type(&mut self) -> Type {
-        let r#type = match self.curr_token.kind() {
+        let mut r#type = match self.curr_token.kind() {
             TokenKind::I8 => {
                 self.accept_token();
                 IntType::I8.into()
@@ -226,13 +226,13 @@ impl<'a> Parser<'a> {
             ),
         };
 
-        if self.curr_token.is_kind(TokenKind::LeftBracket) {
+        while self.curr_token.is_kind(TokenKind::LeftBracket) {
             self.accept_token();
             self.expect_token(TokenKind::RightBracket);
-            ArrayType::new(r#type).into()
-        } else {
-            r#type
+            r#type = ArrayType::new(r#type).into()
         }
+
+        r#type
     }
 
     fn parse_ptr_type(&mut self) -> PtrType {
@@ -312,7 +312,7 @@ impl<'a> Parser<'a> {
                 if self.curr_token.is_kind(TokenKind::RightParen) {
                     return (list, true);
                 } else {
-                    panic!("Unexpected token after ellipsis")
+                    panic!("Unexpected token after ellipsis: {:?}", self.curr_token)
                 }
             } else {
                 list.push(self.parse_param());

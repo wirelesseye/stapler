@@ -7,11 +7,15 @@ use super::{TypeKind, TypeTrait};
 #[derive(Clone)]
 pub struct RefType {
     pub expr: Expr,
+    pub type_id: Option<u64>,
 }
 
 impl RefType {
     pub fn new(expr: Expr) -> Self {
-        Self { expr }
+        Self {
+            expr,
+            type_id: None,
+        }
     }
 }
 
@@ -35,6 +39,10 @@ impl TypeTrait for RefType {
 
 impl Debug for RefType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.expr)
+        write!(f, "{:?}", self.expr)?;
+        if let Some(type_id) = self.type_id {
+            write!(f, "({})", type_id)?;
+        }
+        Ok(())
     }
 }

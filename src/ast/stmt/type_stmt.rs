@@ -1,17 +1,17 @@
 use std::fmt::Debug;
 
-use crate::ast::types::Type;
+use crate::ast::{ident::Ident, types::Type};
 
 use super::{StmtKind, StmtTrait};
 
 pub struct TypeStmt {
-    pub lhs: Type,
-    pub rhs: Type,
+    pub ident: Ident,
+    pub r#type: Type,
 }
 
 impl TypeStmt {
-    pub fn new(lhs: Type, rhs: Type) -> Self {
-        Self { lhs, rhs }
+    pub fn new(ident: Ident, r#type: Type) -> Self {
+        Self { ident, r#type }
     }
 }
 
@@ -31,6 +31,6 @@ impl StmtTrait for TypeStmt {
 
 impl Debug for TypeStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "typedef {:?} {:?}", self.lhs, self.rhs)
+        write!(f, "type {:?} {:?}", self.ident, self.r#type)
     }
 }

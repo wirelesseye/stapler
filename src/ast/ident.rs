@@ -3,14 +3,14 @@ use std::fmt::Debug;
 #[derive(Clone)]
 pub struct Ident {
     pub name: String,
-    pub decl_id: Option<u64>,
+    pub symbol_id: Option<u64>,
 }
 
 impl Ident {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            decl_id: None,
+            symbol_id: None,
         }
     }
 }
@@ -18,8 +18,8 @@ impl Ident {
 impl Debug for Ident {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)?;
-        if let Some(decl_id) = &self.decl_id {
-            write!(f, "({})", decl_id)?;
+        if let Some(value_id) = &self.symbol_id {
+            write!(f, "({})", value_id)?;
         }
         Ok(())
     }

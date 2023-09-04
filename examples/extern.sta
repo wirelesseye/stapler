@@ -2,10 +2,10 @@
  * multi-line comments
  */
 
-let msg = "Hello world!\n"
+let msg: *i8 = "Hello world!\n"
 
 extern {
-    let printf: (format: *i8, ...args: unsafe.any[]) -> i32 // external function from C
+   let printf: (format: *i8, ...args: i8[]) -> i32 // external function from C
 }
 
 printf("%s", msg)

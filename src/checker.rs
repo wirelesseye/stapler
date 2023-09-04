@@ -5,25 +5,32 @@ use crate::{
         expr::{CallExpr, Expr, ExprKind, IdentExpr},
         ident::Ident,
         module_ast::ModuleAST,
-        stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind},
-        types::{FuncType, RefType, Type, TypeKind},
+        param::Param,
+        stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind, TypeStmt},
+        types::{ArrayType, FuncType, RefType, Type, TypeKind},
     },
-    decl_table::DeclTable,
+    symbol_table::SymbolTable,
 };
 
 pub struct Checker {
-    def_table: DeclTable,
+    symbol_table: SymbolTable,
 }
 
 impl Checker {
     pub fn new() -> Self {
         Self {
-            def_table: DeclTable::new(),
+            symbol_table: SymbolTable::new(),
         }
     }
 
     pub fn check(&mut self, ast: &mut ModuleAST) {
-        for stmt in &mut ast.stmts {
+        self.check_module(ast);
+    }
+
+    // ==================================================
+
+    fn check_module(&mut self, module: &mut ModuleAST) {
+        for stmt in &mut module.stmts {
             self.check_stmt(stmt);
         }
     }
@@ -33,6 +40,7 @@ impl Checker {
             StmtKind::Decl => self.check_decl_stmt(stmt.cast_mut::<DeclStmt>()),
             StmtKind::Extern => self.check_extern_stmt(stmt.cast_mut::<ExternStmt>()),
             StmtKind::Expr => self.check_expr_stmt(stmt.cast_mut::<ExprStmt>()),
+            StmtKind::Type => self.check_type_stmt(stmt.cast_mut::<TypeStmt>()),
             _ => (),
         }
     }
@@ -53,19 +61,32 @@ impl Checker {
         self.check_expr(&mut expr_stmt.expr);
     }
 
+    fn check_type_stmt(&mut self, type_stmt: &mut TypeStmt) {
+        self.check_type(&mut type_stmt.r#type);
+        let type_id = self.symbol_table.push_type(&type_stmt.ident.name);
+        type_stmt.ident.symbol_id = Some(type_id);
+    }
+
     // ==================================================
 
     fn check_decl(&mut self, decl: &mut Decl) {
         if let Some(value) = &mut decl.value {
             self.check_expr(value);
-
             if decl.r#type.is_none() && value.r#type().is_some() {
                 decl.r#type = value.r#type().clone();
             }
         }
 
-        let decl_id = self.def_table.push(&decl.name, decl.r#type.clone());
-        decl.decl_id = Some(decl_id);
+        if let Some(r#type) = &mut decl.r#type {
+            self.check_type(r#type);
+        } else {
+            panic!("Type is not specified")
+        }
+
+        let value_id = self
+            .symbol_table
+            .push_value(&decl.name, decl.r#type.clone());
+        decl.value_id = Some(value_id);
     }
 
     // ==================================================
@@ -99,9 +120,12 @@ impl Checker {
     fn check_ident_expr(&mut self, ident_expr: &mut IdentExpr) {
         self.check_ident(&mut ident_expr.ident);
 
-        let decl_entry = self.def_table.retrieve(&ident_expr.ident.name).unwrap();
-        if ident_expr.r#type.is_none() && decl_entry.r#type.is_some() {
-            ident_expr.r#type = decl_entry.r#type.clone();
+        let entry = self
+            .symbol_table
+            .retrieve_value(&ident_expr.ident.name)
+            .unwrap();
+        if ident_expr.r#type.is_none() && entry.r#type.is_some() {
+            ident_expr.r#type = entry.r#type.clone();
         }
     }
 
@@ -110,22 +134,51 @@ impl Checker {
     fn check_type(&mut self, r#type: &mut Type) {
         match r#type.kind() {
             TypeKind::Ref => self.check_ref_type(r#type.cast_mut::<RefType>()),
+            TypeKind::Array => self.check_array_type(r#type.cast_mut::<ArrayType>()),
+            TypeKind::Func => self.check_func_type(r#type.cast_mut::<FuncType>()),
             _ => (),
         }
     }
 
     fn check_ref_type(&mut self, ref_type: &mut RefType) {
-        self.check_expr(&mut ref_type.expr);
+        if ref_type.type_id.is_none() {
+            let entry = match ref_type.expr.kind() {
+                ExprKind::Ident => {
+                    let ident_expr = ref_type.expr.cast_mut::<IdentExpr>();
+                    self.symbol_table
+                        .retrieve_type(&ident_expr.ident.name)
+                        .unwrap()
+                }
+                ExprKind::Member => todo!(),
+                _ => panic!(),
+            };
+            ref_type.type_id = Some(entry.type_id);
+        }
+    }
+
+    fn check_array_type(&mut self, array_type: &mut ArrayType) {
+        self.check_type(&mut array_type.elem_type);
+    }
+
+    fn check_func_type(&mut self, func_type: &mut FuncType) {
+        self.check_type(&mut func_type.return_type);
+        for param in &mut func_type.params {
+            self.check_param(param);
+        }
     }
 
     // ==================================================
 
     fn check_ident(&mut self, ident: &mut Ident) {
-        let decl_entry = self.def_table.retrieve(&ident.name).unwrap();
-        ident.decl_id = Some(decl_entry.decl_id);
+        let decl_entry = self.symbol_table.retrieve_value(&ident.name).unwrap();
+        ident.symbol_id = Some(decl_entry.value_id);
     }
 
     fn check_arg(&mut self, arg: &mut Arg) {
         self.check_expr(&mut arg.expr);
+    }
+
+    fn check_param(&mut self, param: &mut Param) {
+        self.check_type(&mut param.r#type);
     }
 }

@@ -4,12 +4,14 @@ use crate::{
     ast::{
         arg::Arg,
         decl::Decl,
-        expr::{CallExpr, Expr, IdentExpr, IntLiteralExpr, MemberExpr, StrLiteralExpr},
+        expr::{
+            CallExpr, CompositeExpr, Expr, IdentExpr, IntLiteralExpr, MemberExpr, StrLiteralExpr,
+        },
         ident::Ident,
         module_ast::ModuleAST,
         param::Param,
         stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, TypeStmt},
-        types::{ArrayType, FuncType, IntType, PtrType, RefType, Type, CompositeType},
+        types::{ArrayType, CompositeType, FuncType, IntType, PtrType, RefType, Type},
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -147,21 +149,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_primary_expr(&mut self) -> Expr {
-        match self.curr_token.kind() {
-            TokenKind::Identifier => self.parse_ident_expr().into(),
-            TokenKind::IntLiteral => {
-                let token = self.accept_token();
-                IntLiteralExpr::new(token.spelling().to_string()).into()
-            }
-            TokenKind::StrLiteral => {
-                let token = self.accept_token();
-                let spelling = token.spelling();
-                StrLiteralExpr::new(spelling[1..spelling.len() - 1].to_string()).into()
-            }
-            _ => panic!("unexpected expression at {:?}", self.curr_token.begin()),
-        }
-    }
+    // ==================================================
 
     fn parse_expr(&mut self) -> Expr {
         let mut expr = self.parse_primary_expr();
@@ -177,6 +165,27 @@ impl<'a> Parser<'a> {
         expr
     }
 
+    fn parse_primary_expr(&mut self) -> Expr {
+        match self.curr_token.kind() {
+            TokenKind::Identifier => self.parse_ident_expr().into(),
+            TokenKind::IntLiteral => {
+                let token = self.accept_token();
+                IntLiteralExpr::new(token.spelling().to_string()).into()
+            }
+            TokenKind::StrLiteral => {
+                let token = self.accept_token();
+                let spelling = token.spelling();
+                StrLiteralExpr::new(spelling[1..spelling.len() - 1].to_string()).into()
+            }
+            TokenKind::LeftBrace => self.parse_composite_expr().into(),
+            _ => panic!(
+                "unexpected expression at {:?}: {:?}",
+                self.curr_token.begin(),
+                self.curr_token.spelling()
+            ),
+        }
+    }
+
     fn parse_call_expr(&mut self, postfix_expr: Expr) -> CallExpr {
         let arg_list = self.parse_arg_list();
         CallExpr::new(postfix_expr, arg_list)
@@ -186,6 +195,27 @@ impl<'a> Parser<'a> {
         self.expect_token(TokenKind::Dot);
         let member = self.parse_ident();
         MemberExpr::new(postfix_expr, member)
+    }
+
+    fn parse_composite_expr(&mut self) -> CompositeExpr {
+        let mut fields = Vec::new();
+        self.expect_token(TokenKind::LeftBrace);
+
+        loop {
+            if self.curr_token.is_kind(TokenKind::RightBrace) {
+                break;
+            }
+            if self.curr_token.is_kind(TokenKind::Comma) {
+                self.accept_token();
+            }
+            let name = self.parse_ident().name;
+            self.expect_token(TokenKind::Colon);
+            let value = self.parse_expr();
+            fields.push((name, value));
+        }
+
+        self.expect_token(TokenKind::RightBrace);
+        CompositeExpr::new(fields)
     }
 
     fn parse_ident_expr(&mut self) -> IdentExpr {

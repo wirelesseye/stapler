@@ -4,17 +4,20 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    types::AnyTypeEnum,
-    values::{AnyValue, AnyValueEnum},
+    types::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum},
+    values::{AnyValue, AnyValueEnum, BasicValueEnum},
     AddressSpace,
 };
 
 use crate::ast::{
     decl::Decl,
-    expr::{CallExpr, Expr, ExprKind, IdentExpr, IntLiteralExpr, StrLiteralExpr},
+    expr::{
+        CallExpr, CompositeExpr, Expr, ExprKind, IdentExpr, IntLiteralExpr, MemberExpr,
+        StrLiteralExpr,
+    },
     module_ast::ModuleAST,
-    stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind},
-    types::{FuncType, IntType, PtrType, RefType, Type, TypeKind},
+    stmt::{DeclStmt, ExprStmt, ExternStmt, ReturnStmt, Stmt, StmtKind, TypeStmt},
+    types::{CompositeType, FuncType, IntType, PtrType, RefType, Type, TypeKind},
 };
 
 pub struct Codegen<'ctx> {
@@ -102,7 +105,7 @@ impl<'ctx> Codegen<'ctx> {
             StmtKind::Decl => self.build_decl_stmt(module, builder, stmt.cast::<DeclStmt>()),
             StmtKind::Expr => self.build_expr_stmt(module, builder, stmt.cast::<ExprStmt>()),
             StmtKind::Return => self.build_return_stmt(module, builder, stmt.cast::<ReturnStmt>()),
-            StmtKind::Type => (),
+            StmtKind::Type => self.build_type_stmt(module, builder, stmt.cast::<TypeStmt>()),
         }
     }
 
@@ -174,6 +177,16 @@ impl<'ctx> Codegen<'ctx> {
         }
     }
 
+    fn build_type_stmt(
+        &'ctx self,
+        module: &Module<'ctx>,
+        builder: &Builder<'ctx>,
+        type_stmt: &TypeStmt,
+    ) {
+        let llvm_type = self.compile_type(&type_stmt.r#type);
+        self.set_type(type_stmt.ident.symbol_id.unwrap(), llvm_type);
+    }
+
     // ==================================================
 
     fn build_decl(&'ctx self, module: &Module<'ctx>, builder: &Builder<'ctx>, decl: &Decl) {
@@ -222,12 +235,15 @@ impl<'ctx> Codegen<'ctx> {
                 .as_any_value_enum(),
             ExprKind::IntLiteral => self
                 .build_int_literial_expr(module, builder, expr.cast::<IntLiteralExpr>())
-                .into(),
+                .as_any_value_enum(),
             ExprKind::StrLiteral => self
                 .build_str_literial_expr(module, builder, expr.cast::<StrLiteralExpr>())
                 .as_any_value_enum(),
             ExprKind::Ident => self.build_ident_expr(module, builder, expr.cast::<IdentExpr>()),
             ExprKind::Member => todo!(),
+            ExprKind::Composite => self
+                .build_composite_expr(module, builder, expr.cast::<CompositeExpr>())
+                .as_any_value_enum(),
         }
     }
 
@@ -291,6 +307,55 @@ impl<'ctx> Codegen<'ctx> {
         v
     }
 
+    // fn build_member_expr(
+    //     &'ctx self,
+    //     module: &Module<'ctx>,
+    //     builder: &Builder<'ctx>,
+    //     member_expr: &MemberExpr,
+    // ) -> AnyTypeEnum {
+    //     let composite_value = self
+    //         .build_expr(module, builder, &member_expr.postfix_expr)
+    //         .into_struct_value();
+    // }
+
+    fn build_composite_expr(
+        &'ctx self,
+        module: &Module<'ctx>,
+        builder: &Builder<'ctx>,
+        composite_expr: &CompositeExpr,
+    ) -> inkwell::values::PointerValue {
+        let r#type = composite_expr.r#type.as_ref().unwrap();
+        let llvm_type = match r#type.kind() {
+            TypeKind::Ref => {
+                let ref_type = r#type.cast::<RefType>();
+                self.get_type(ref_type.type_id.unwrap()).into_struct_type()
+            }
+            _ => panic!("Invalid CompositeType"),
+        };
+        let instance = builder.build_alloca(llvm_type, "");
+        for (i, (name, expr)) in composite_expr.fields.iter().enumerate() {
+            let ptr = builder
+                .build_struct_gep(llvm_type, instance, i.try_into().unwrap(), name)
+                .unwrap();
+            let llvm_value = self.build_expr(module, builder, expr);
+            let value: BasicValueEnum = match llvm_value {
+                AnyValueEnum::ArrayValue(_) => todo!(),
+                AnyValueEnum::IntValue(_) => llvm_value.into_int_value().into(),
+                AnyValueEnum::FloatValue(_) => todo!(),
+                AnyValueEnum::PhiValue(_) => todo!(),
+                AnyValueEnum::FunctionValue(_) => todo!(),
+                AnyValueEnum::PointerValue(_) => llvm_value.into_pointer_value().into(),
+                AnyValueEnum::StructValue(_) => todo!(),
+                AnyValueEnum::VectorValue(_) => todo!(),
+                AnyValueEnum::InstructionValue(_) => todo!(),
+                AnyValueEnum::MetadataValue(_) => todo!(),
+            };
+            builder.build_store(ptr, value);
+        }
+
+        instance
+    }
+
     // ==================================================
 
     fn compile_type(&self, r#type: &Type) -> AnyTypeEnum {
@@ -300,13 +365,13 @@ impl<'ctx> Codegen<'ctx> {
             TypeKind::Ptr => self.compile_ptr_type(r#type.cast::<PtrType>()).into(),
             TypeKind::Ref => self.compile_ref_type(r#type.cast::<RefType>()).into(),
             TypeKind::Array => todo!(),
-            TypeKind::Composite => todo!(),
+            TypeKind::Composite => self
+                .compile_composite_type(r#type.cast::<CompositeType>())
+                .into(),
         }
     }
 
     fn compile_func_type(&self, func_type: &FuncType) -> inkwell::types::FunctionType {
-        use inkwell::types::BasicMetadataTypeEnum;
-
         let return_type = self.compile_type(&func_type.return_type);
         let params = if func_type.is_var_args {
             &func_type.params[..func_type.params.len() - 1]
@@ -399,9 +464,37 @@ impl<'ctx> Codegen<'ctx> {
     }
 
     fn compile_ref_type(&self, ref_type: &RefType) -> AnyTypeEnum {
-        self.get_type(ref_type.type_id.unwrap())
+        self.get_type(
+            ref_type
+                .type_id
+                .expect(&format!("Failed to get ref type: {:?}", ref_type)),
+        )
         // self.context
         //     .opaque_struct_type(&ref_type.name)
         //     .ptr_type(AddressSpace::default())
+    }
+
+    fn compile_composite_type(&self, composite_type: &CompositeType) -> inkwell::types::StructType {
+        let field_types: Vec<BasicTypeEnum> = composite_type
+            .fields
+            .iter()
+            .map(|field| {
+                let llvm_type = self.compile_type(&field.r#type);
+                match llvm_type {
+                    AnyTypeEnum::ArrayType(_) => llvm_type.into_array_type().into(),
+                    AnyTypeEnum::FloatType(_) => llvm_type.into_float_type().into(),
+                    AnyTypeEnum::FunctionType(_) => llvm_type
+                        .into_function_type()
+                        .ptr_type(AddressSpace::default())
+                        .into(),
+                    AnyTypeEnum::IntType(_) => llvm_type.into_int_type().into(),
+                    AnyTypeEnum::PointerType(_) => llvm_type.into_pointer_type().into(),
+                    AnyTypeEnum::StructType(_) => llvm_type.into_struct_type().into(),
+                    AnyTypeEnum::VectorType(_) => llvm_type.into_vector_type().into(),
+                    AnyTypeEnum::VoidType(_) => panic!("Cannot have void type in fields"),
+                }
+            })
+            .collect();
+        self.context.struct_type(&field_types, false)
     }
 }

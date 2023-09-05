@@ -1,4 +1,5 @@
 mod call_expr;
+mod composite_expr;
 mod ident_expr;
 mod int_literal_expr;
 mod member_expr;
@@ -7,6 +8,7 @@ mod str_literal_expr;
 use std::{any::Any, fmt::Debug};
 
 pub use call_expr::*;
+pub use composite_expr::*;
 pub use ident_expr::*;
 pub use int_literal_expr::*;
 pub use member_expr::*;
@@ -16,6 +18,7 @@ use super::types::Type;
 
 pub enum ExprKind {
     Call,
+    Composite,
     Ident,
     IntLiteral,
     StrLiteral,

@@ -17,8 +17,7 @@ pub struct SymbolTable {
     level: u64,
     values: Vec<ValueEntry>,
     types: Vec<TypeEntry>,
-    next_value_id: u64,
-    next_type_id: u64,
+    next_id: u64,
 }
 
 impl SymbolTable {
@@ -27,8 +26,7 @@ impl SymbolTable {
             level: 1,
             values: Vec::new(),
             types: Vec::new(),
-            next_value_id: 0,
-            next_type_id: 0,
+            next_id: 0,
         }
     }
 
@@ -46,25 +44,25 @@ impl SymbolTable {
     }
 
     pub fn push_value(&mut self, name: &str, r#type: Option<Type>) -> u64 {
-        let id = self.next_value_id;
+        let id = self.next_id;
         self.values.push(ValueEntry {
             value_id: id,
             name: name.to_owned(),
             r#type,
             level: self.level,
         });
-        self.next_value_id += 1;
+        self.next_id += 1;
         id
     }
 
     pub fn push_type(&mut self, name: &str) -> u64 {
-        let id = self.next_type_id;
+        let id = self.next_id;
         self.types.push(TypeEntry {
             type_id: id,
             name: name.to_owned(),
             level: self.level,
         });
-        self.next_type_id += 1;
+        self.next_id += 1;
         id
     }
 

@@ -2,12 +2,12 @@ use crate::{
     ast::{
         arg::Arg,
         decl::Decl,
-        expr::{CallExpr, Expr, ExprKind, IdentExpr},
+        expr::{CallExpr, Expr, ExprKind, IdentExpr, CompositeExpr},
         ident::Ident,
         module_ast::ModuleAST,
         param::Param,
         stmt::{DeclStmt, ExprStmt, ExternStmt, Stmt, StmtKind, TypeStmt},
-        types::{ArrayType, FuncType, RefType, Type, TypeKind},
+        types::{ArrayType, FuncType, RefType, Type, TypeKind, CompositeType},
     },
     symbol_table::SymbolTable,
 };
@@ -58,7 +58,7 @@ impl Checker {
     }
 
     fn check_expr_stmt(&mut self, expr_stmt: &mut ExprStmt) {
-        self.check_expr(&mut expr_stmt.expr);
+        self.check_expr(&mut expr_stmt.expr, &None);
     }
 
     fn check_type_stmt(&mut self, type_stmt: &mut TypeStmt) {
@@ -70,16 +70,18 @@ impl Checker {
     // ==================================================
 
     fn check_decl(&mut self, decl: &mut Decl) {
+        if let Some(r#type) = &mut decl.r#type {
+            self.check_type(r#type);
+        }
+
         if let Some(value) = &mut decl.value {
-            self.check_expr(value);
+            self.check_expr(value, &decl.r#type);
             if decl.r#type.is_none() && value.r#type().is_some() {
                 decl.r#type = value.r#type().clone();
             }
         }
 
-        if let Some(r#type) = &mut decl.r#type {
-            self.check_type(r#type);
-        } else {
+        if decl.r#type.is_none() {
             panic!("Type is not specified")
         }
 
@@ -91,17 +93,18 @@ impl Checker {
 
     // ==================================================
 
-    fn check_expr(&mut self, expr: &mut Expr) {
+    fn check_expr(&mut self, expr: &mut Expr, r#type: &Option<Type>) {
         match expr.kind() {
             ExprKind::Call => self.check_call_expr(expr.cast_mut::<CallExpr>()),
             ExprKind::Ident => self.check_ident_expr(expr.cast_mut::<IdentExpr>()),
             ExprKind::Member => (),
+            ExprKind::Composite => self.check_composite_expr(expr.cast_mut::<CompositeExpr>(), r#type),
             _ => (),
         }
     }
 
     fn check_call_expr(&mut self, call_expr: &mut CallExpr) {
-        self.check_expr(&mut call_expr.postfix_expr);
+        self.check_expr(&mut call_expr.postfix_expr, &None);
         for arg in &mut call_expr.args {
             self.check_arg(arg);
         }
@@ -129,6 +132,15 @@ impl Checker {
         }
     }
 
+    fn check_composite_expr(&mut self, composite_expr: &mut CompositeExpr, r#type: &Option<Type>) {
+        if r#type.is_some() {
+            composite_expr.r#type = r#type.clone();
+        }
+        for (_, expr) in &mut composite_expr.fields {
+            self.check_expr(expr, &None)
+        }
+    }
+
     // ==================================================
 
     fn check_type(&mut self, r#type: &mut Type) {
@@ -136,6 +148,7 @@ impl Checker {
             TypeKind::Ref => self.check_ref_type(r#type.cast_mut::<RefType>()),
             TypeKind::Array => self.check_array_type(r#type.cast_mut::<ArrayType>()),
             TypeKind::Func => self.check_func_type(r#type.cast_mut::<FuncType>()),
+            TypeKind::Composite => self.check_composite_type(r#type.cast_mut::<CompositeType>()),
             _ => (),
         }
     }
@@ -167,6 +180,12 @@ impl Checker {
         }
     }
 
+    fn check_composite_type(&mut self, composite_type: &mut CompositeType) {
+        for field in &mut composite_type.fields {
+            self.check_type(&mut field.r#type);
+        }
+    }
+
     // ==================================================
 
     fn check_ident(&mut self, ident: &mut Ident) {
@@ -175,7 +194,7 @@ impl Checker {
     }
 
     fn check_arg(&mut self, arg: &mut Arg) {
-        self.check_expr(&mut arg.expr);
+        self.check_expr(&mut arg.expr, &None);
     }
 
     fn check_param(&mut self, param: &mut Param) {

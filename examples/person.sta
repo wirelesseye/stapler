@@ -60,9 +60,9 @@ type Student {
     ;
 
     pub new = {{
-        firstName: String
-        lastName: String
-        birthYear: i32
+        firstName: String,
+        lastName: String,
+        birthYear: i32,
         studentId: string
         -> Student;
 

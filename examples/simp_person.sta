@@ -1,6 +1,29 @@
+extern {
+   let printf: (format: *i8, ...args: i8[]) -> i32 // external function from C
+}
+
+type String {
+    raw: *i8
+}
+
 type Person {
     firstName: String
     lastName: String
     age: i32
 }
 
+let firstName: String = {
+    raw: "John"
+}
+
+let lastName: String = {
+    raw: "Smith"
+}
+
+let person: Person = {
+    firstName: firstName
+    lastName: lastName
+    age: 32
+}
+
+// printf("%d", person.age)
